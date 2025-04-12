@@ -18,6 +18,13 @@ export const NetworkProvider = ({ children }) => {
         }
     }, [selectedPerson]);
 
+    // Debug logging for network data
+    useEffect(() => {
+        if (networkData.length > 0) {
+            console.log('Current network data:', networkData);
+        }
+    }, [networkData]);
+
     const loadPersonDetails = async (personId) => {
         try {
             setLoading(true);

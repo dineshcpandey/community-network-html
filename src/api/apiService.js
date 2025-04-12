@@ -42,6 +42,10 @@ export const getPersonDetails = async (personId) => {
 export const getPersonNetwork = async (personId) => {
     try {
         const response = await apiClient.get(`/details/${personId}/network`);
+
+        // Log the received network data to help with debugging
+        console.log(`Network data for person ID ${personId}:`, response.data);
+
         return response.data;
     } catch (error) {
         console.error(`Error fetching network for person ID ${personId}:`, error);

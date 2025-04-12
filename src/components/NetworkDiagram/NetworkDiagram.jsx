@@ -73,14 +73,22 @@ const NetworkDiagram = () => {
         networkData.forEach((person) => {
             // Process spouse relationships
             if (person.rels.spouses && person.rels.spouses.length > 0) {
-                person.rels.spouses.forEach((spouseId) => {
-                    const relationshipId = [person.id, spouseId].sort().join('-');
+                // Convert to array if it's not already (handle both string and array formats)
+                const spouses = Array.isArray(person.rels.spouses)
+                    ? person.rels.spouses
+                    : [person.rels.spouses];
+
+                spouses.forEach((spouseId) => {
+                    // Ensure spouseId is treated as a string for comparison
+                    const spouseIdStr = String(spouseId);
+                    const personIdStr = String(person.id);
+                    const relationshipId = [personIdStr, spouseIdStr].sort().join('-');
 
                     if (!processedRelationships.has(relationshipId)) {
                         transformedEdges.push({
                             id: `spouse-${relationshipId}`,
-                            source: person.id,
-                            target: spouseId,
+                            source: personIdStr,
+                            target: spouseIdStr,
                             type: 'straight',
                             animated: false,
                             style: { stroke: '#FF9E80', strokeWidth: 2 },
@@ -97,11 +105,19 @@ const NetworkDiagram = () => {
 
             // Process parent-child relationships
             if (person.rels.children && person.rels.children.length > 0) {
-                person.rels.children.forEach((childId) => {
+                // Convert to array if it's not already (handle both string and array formats)
+                const children = Array.isArray(person.rels.children)
+                    ? person.rels.children
+                    : [person.rels.children];
+
+                children.forEach((childId) => {
+                    const childIdStr = String(childId);
+                    const personIdStr = String(person.id);
+
                     transformedEdges.push({
-                        id: `parent-${person.id}-${childId}`,
-                        source: person.id,
-                        target: childId,
+                        id: `parent-${personIdStr}-${childIdStr}`,
+                        source: personIdStr,
+                        target: childIdStr,
                         type: 'straight',
                         animated: false,
                         style: { stroke: '#4FC3F7', strokeWidth: 2 },
@@ -115,10 +131,13 @@ const NetworkDiagram = () => {
 
             // Process father relationships
             if (person.rels.father) {
+                const fatherId = String(person.rels.father);
+                const personId = String(person.id);
+
                 transformedEdges.push({
-                    id: `father-${person.rels.father}-${person.id}`,
-                    source: person.rels.father,
-                    target: person.id,
+                    id: `father-${fatherId}-${personId}`,
+                    source: fatherId,
+                    target: personId,
                     type: 'straight',
                     animated: false,
                     style: { stroke: '#81C784', strokeWidth: 2 },
@@ -131,10 +150,13 @@ const NetworkDiagram = () => {
 
             // Process mother relationships
             if (person.rels.mother) {
+                const motherId = String(person.rels.mother);
+                const personId = String(person.id);
+
                 transformedEdges.push({
-                    id: `mother-${person.rels.mother}-${person.id}`,
-                    source: person.rels.mother,
-                    target: person.id,
+                    id: `mother-${motherId}-${personId}`,
+                    source: motherId,
+                    target: personId,
                     type: 'straight',
                     animated: false,
                     style: { stroke: '#BA68C8', strokeWidth: 2 },
