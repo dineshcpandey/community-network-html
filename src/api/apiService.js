@@ -55,7 +55,7 @@ export const getPersonNetwork = async (personId) => {
 
 export const addNewPerson = async (personData) => {
     try {
-        const response = await apiClient.post('/details', personData);
+        const response = await apiClient.post('/details/add', personData);
         return response.data;
     } catch (error) {
         console.error('Error adding new person:', error);
