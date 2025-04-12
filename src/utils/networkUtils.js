@@ -155,10 +155,10 @@ export const getGenderColor = (gender) => {
  */
 export const getRelationshipColor = (relationType) => {
     const colors = {
-        spouse: 'var(--relation-spouse-color)',
-        child: 'var(--relation-child-color)',
-        father: 'var(--relation-father-color)',
-        mother: 'var(--relation-mother-color)',
+        spouse: '#FF9E80',
+        child: '#4FC3F7',
+        father: '#81C784',
+        mother: '#BA68C8',
     };
 
     return colors[relationType] || '#aaaaaa';

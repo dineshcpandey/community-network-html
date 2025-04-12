@@ -86,6 +86,7 @@ export const NetworkProvider = ({ children }) => {
         setNetworkData([]);
         setSelectedPerson(null);
         setExpandedNodes(new Set());
+        setError(null);
     };
 
     const addPersonToNetwork = (personData) => {

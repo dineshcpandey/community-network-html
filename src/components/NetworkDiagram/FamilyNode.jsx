@@ -1,12 +1,49 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 
-const FamilyNode = ({ data }) => {
+const FamilyNode = ({ data, isConnectable }) => {
     const nodeClass = `family-node ${data.gender === 'M' ? 'male' : 'female'} ${data.selected ? 'selected' : ''}`;
 
     return (
         <div className={nodeClass}>
-            <Handle type="target" position={Position.Top} />
+            {/* Handles for hierarchical connections */}
+            <Handle
+                type="target"
+                position={Position.Top}
+                id="top"
+                isConnectable={isConnectable}
+                style={{ zIndex: 10 }}
+            />
+
+            <Handle
+                type="source"
+                position={Position.Bottom}
+                id="bottom"
+                isConnectable={isConnectable}
+                style={{ zIndex: 10 }}
+            />
+
+            {/* Handles for spouse connections */}
+            <Handle
+                type="source"
+                position={Position.Right}
+                id="middle-right"
+                style={{ top: '50%', zIndex: 10 }}
+                isConnectable={isConnectable}
+            />
+
+            <Handle
+                type="target"
+                position={Position.Left}
+                id="middle-left"
+                style={{ top: '50%', zIndex: 10 }}
+                isConnectable={isConnectable}
+            />
+
+            {/* Rank badge */}
+            <div className="node-rank-badge">
+                Rank: {data.rank || 'N/A'}
+            </div>
 
             <div className="node-avatar">
                 <img src={data.avatar} alt={data.name} />
@@ -36,8 +73,6 @@ const FamilyNode = ({ data }) => {
                     </button>
                 )}
             </div>
-
-            <Handle type="source" position={Position.Bottom} />
         </div>
     );
 };

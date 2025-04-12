@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NetworkProvider } from './context/NetworkContext';
 import SearchComponent from './components/Search/SearchComponent';
-import NetworkDiagram from './components/NetworkDiagram/NetworkDiagram';
+import FamilyChart from './components/FamilyChart/FamilyChart';
 import AddMemberForm from './components/AddMember/AddMemberForm';
 import './App.css';
 
@@ -12,7 +12,7 @@ function App() {
         <NetworkProvider>
             <div className="app-container">
                 <header className="app-header">
-                    <h1>Community Network</h1>
+                    <h1>Family Tree Network</h1>
                     <button
                         className="add-member-button"
                         onClick={() => setShowAddForm(true)}
@@ -27,7 +27,7 @@ function App() {
                     </div>
 
                     <div className="network-section">
-                        <NetworkDiagram />
+                        <FamilyChart />
                     </div>
 
                     {showAddForm && (
@@ -40,7 +40,7 @@ function App() {
                 </main>
 
                 <footer className="app-footer">
-                    <p>Community Network Visualization - {new Date().getFullYear()}</p>
+                    <p>Family Tree Visualization - {new Date().getFullYear()}</p>
                 </footer>
             </div>
         </NetworkProvider>

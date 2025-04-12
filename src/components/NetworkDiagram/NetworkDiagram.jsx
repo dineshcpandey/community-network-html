@@ -1,16 +1,21 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ReactFlow, {
     Background,
     Controls,
     MiniMap,
     useNodesState,
     useEdgesState,
-    MarkerType
+    MarkerType,
+    Panel,
+    Position,
+    ReactFlowProvider
 } from 'reactflow';
+import * as d3 from 'd3';
 import 'reactflow/dist/style.css';
 import { useNetwork } from '../../context/NetworkContext';
 import FamilyNode from './FamilyNode';
 import './NetworkDiagram.css';
+import { getRelationshipColor } from '../../utils/networkUtils';
 
 // Custom node types
 const nodeTypes = {
@@ -23,175 +28,216 @@ const NetworkDiagram = () => {
         selectedPerson,
         expandNode,
         expandedNodes,
-        loading
+        loading,
+        resetNetwork
     } = useNetwork();
 
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [layoutDirection, setLayoutDirection] = useState('TB'); // 'TB' (top to bottom) or 'LR' (left to right)
+    const reactFlowInstance = useRef(null);
+    const simulationRef = useRef(null);
 
-    // Transform network data to nodes and edges
-    useEffect(() => {
-        if (networkData.length === 0) {
-            setNodes([]);
-            setEdges([]);
-            return;
+    // Function to update node positions after drag
+    const onNodeDragStop = useCallback((event, node) => {
+        // Mark node as manually positioned
+        setNodes((nds) =>
+            nds.map((n) => {
+                if (n.id === node.id) {
+                    return { ...n, dragged: true, position: node.position };
+                }
+                return n;
+            })
+        );
+
+        // Force edge redraw after drag
+        setTimeout(() => {
+            // This forces a redraw of edges
+            setEdges((eds) => [...eds]);
+        }, 10);
+    }, [setNodes, setEdges]);
+
+    // Apply force-directed layout - define this function first
+    const applyForceLayout = useCallback((initialNodes, initialEdges, direction) => {
+        if (initialNodes.length === 0) return;
+
+        // Stop any existing simulation
+        if (simulationRef.current) {
+            simulationRef.current.stop();
         }
 
-        const transformedNodes = [];
-        const transformedEdges = [];
-        const processedRelationships = new Set();
+        // Create a map for quick node lookup
+        const nodeMap = {};
+        initialNodes.forEach(node => {
+            nodeMap[node.id] = node;
+        });
 
-        // Helper to get full name
-        const getFullName = (person) => {
-            const firstName = person.data['first name'] || '';
-            const lastName = person.data['last name'] || '';
-            return `${firstName} ${lastName}`.trim();
+        // Find root nodes - those without parents
+        const rootNodes = initialNodes.filter(node => {
+            const nodeId = node.id;
+            return !initialEdges.some(edge =>
+                edge.target === nodeId && (edge.id.startsWith('father-') || edge.id.startsWith('mother-'))
+            );
+        });
+
+        // Calculate generation ranks - start with root nodes at level 0
+        const generationMap = new Map();
+
+        // Helper function to calculate generations recursively
+        const calculateGenerations = (nodeId, generation = 0) => {
+            if (generationMap.has(nodeId)) {
+                // Only update if new generation is smaller (closer to root)
+                if (generation < generationMap.get(nodeId)) {
+                    generationMap.set(nodeId, generation);
+                }
+                return;
+            }
+
+            generationMap.set(nodeId, generation);
+
+            // Find all children of this node
+            const childEdges = initialEdges.filter(edge =>
+                edge.source === nodeId && (edge.id.startsWith('father-') || edge.id.startsWith('mother-'))
+            );
+
+            // Process children recursively
+            childEdges.forEach(edge => {
+                calculateGenerations(edge.target, generation + 1);
+            });
         };
 
-        // Process network data to create nodes
-        networkData.forEach((person) => {
-            // Create node for person
-            transformedNodes.push({
-                id: person.id,
-                type: 'familyNode',
-                position: { x: 0, y: 0 }, // Will be positioned by layout
-                data: {
-                    id: person.id,
-                    name: getFullName(person),
-                    gender: person.data.gender,
-                    avatar: person.data.avatar,
-                    location: person.data.location,
-                    work: person.data.work,
-                    expanded: expandedNodes.has(person.id),
-                    onExpand: () => expandNode(person.id),
-                    selected: person.id === selectedPerson
-                }
+        // Start calculation from root nodes
+        rootNodes.forEach(node => {
+            calculateGenerations(node.id, 100);
+        });
+
+        // If no root nodes found, start from any node
+        if (rootNodes.length === 0 && initialNodes.length > 0) {
+            calculateGenerations(initialNodes[0].id, 100);
+        }
+
+        // Create an array of nodes for the simulation
+        const simulationNodes = initialNodes.map(node => ({
+            ...node,
+            // Include a generation property for vertical positioning
+            generation: generationMap.get(node.id) || 100,
+            // Add x and y coordinates if not already present
+            x: node.position?.x || Math.random() * 800,
+            y: node.position?.y || Math.random() * 600
+        }));
+
+        // Create links for the simulation - only include links where both nodes exist
+        const simulationLinks = [];
+        initialEdges.forEach(edge => {
+            const sourceExists = simulationNodes.some(node => node.id === edge.source);
+            const targetExists = simulationNodes.some(node => node.id === edge.target);
+
+            if (sourceExists && targetExists) {
+                simulationLinks.push({
+                    source: edge.source,
+                    target: edge.target,
+                    relation: edge.relation || 'unknown'
+                });
+            }
+        });
+
+        // Create the force simulation
+        const simulation = d3.forceSimulation(simulationNodes)
+            .force('link', d3.forceLink(simulationLinks)
+                .id(d => d.id)
+                .distance(link => {
+                    // Spouse links should be shorter
+                    if (link.relation === 'spouse') return 120;
+                    // Parent-child links longer
+                    return 180;
+                })
+                .strength(link => {
+                    // Spouse links should be stronger
+                    if (link.relation === 'spouse') return 0.7;
+                    return 0.3;
+                })
+            )
+            .force('charge', d3.forceManyBody().strength(-800))
+            .force('collide', d3.forceCollide(100))
+            .force('x', d3.forceX().strength(0.1))
+            .force('y', d3.forceY(d => {
+                // Position nodes by generation - multiply by 150 for vertical spacing
+                return (d.generation - 100) * 150;
+            }).strength(0.5));
+
+        // Store reference to simulation
+        simulationRef.current = simulation;
+
+        // Update node positions on each simulation tick
+        simulation.on('tick', () => {
+            setNodes(prevNodes => {
+                return prevNodes.map(node => {
+                    const simNode = simulationNodes.find(n => n.id === node.id);
+                    if (simNode && !node.dragged) {
+                        return {
+                            ...node,
+                            position: { x: simNode.x, y: simNode.y },
+                            data: {
+                                ...node.data,
+                                rank: generationMap.get(node.id) || 0
+                            }
+                        };
+                    }
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            rank: generationMap.get(node.id) || 0
+                        }
+                    };
+                });
             });
         });
 
-        // Process relationships to create edges
-        networkData.forEach((person) => {
-            // Process spouse relationships
-            if (person.rels.spouses && person.rels.spouses.length > 0) {
-                // Convert to array if it's not already (handle both string and array formats)
-                const spouses = Array.isArray(person.rels.spouses)
-                    ? person.rels.spouses
-                    : [person.rels.spouses];
+        // Run the simulation for 300 iterations
+        simulation.alpha(1).restart();
 
-                spouses.forEach((spouseId) => {
-                    // Ensure spouseId is treated as a string for comparison
-                    const spouseIdStr = String(spouseId);
-                    const personIdStr = String(person.id);
-                    const relationshipId = [personIdStr, spouseIdStr].sort().join('-');
-
-                    if (!processedRelationships.has(relationshipId)) {
-                        transformedEdges.push({
-                            id: `spouse-${relationshipId}`,
-                            source: personIdStr,
-                            target: spouseIdStr,
-                            type: 'straight',
-                            animated: false,
-                            style: { stroke: '#FF9E80', strokeWidth: 2 },
-                            label: 'Spouse',
-                            markerEnd: {
-                                type: MarkerType.Arrow,
-                            }
-                        });
-
-                        processedRelationships.add(relationshipId);
-                    }
-                });
+        // Stop simulation after some time to save resources
+        setTimeout(() => {
+            if (simulation) {
+                simulation.stop();
             }
 
-            // Process parent-child relationships
-            if (person.rels.children && person.rels.children.length > 0) {
-                // Convert to array if it's not already (handle both string and array formats)
-                const children = Array.isArray(person.rels.children)
-                    ? person.rels.children
-                    : [person.rels.children];
-
-                children.forEach((childId) => {
-                    const childIdStr = String(childId);
-                    const personIdStr = String(person.id);
-
-                    transformedEdges.push({
-                        id: `parent-${personIdStr}-${childIdStr}`,
-                        source: personIdStr,
-                        target: childIdStr,
-                        type: 'straight',
-                        animated: false,
-                        style: { stroke: '#4FC3F7', strokeWidth: 2 },
-                        label: 'Child',
-                        markerEnd: {
-                            type: MarkerType.Arrow,
-                        }
-                    });
-                });
+            // Fit view to show all nodes
+            if (reactFlowInstance.current) {
+                reactFlowInstance.current.fitView({ padding: 0.2 });
             }
+        }, 2000);
+    }, [setNodes]);
 
-            // Process father relationships
-            if (person.rels.father) {
-                const fatherId = String(person.rels.father);
-                const personId = String(person.id);
+    // Re-apply layout when layout direction changes
+    const onLayoutDirectionChange = useCallback((direction) => {
+        setLayoutDirection(direction);
 
-                transformedEdges.push({
-                    id: `father-${fatherId}-${personId}`,
-                    source: fatherId,
-                    target: personId,
-                    type: 'straight',
-                    animated: false,
-                    style: { stroke: '#81C784', strokeWidth: 2 },
-                    label: 'Father',
-                    markerEnd: {
-                        type: MarkerType.Arrow,
-                    }
-                });
-            }
+        // Reset any dragged states when changing layout direction
+        setNodes(nodes => nodes.map(node => ({
+            ...node,
+            dragged: false
+        })));
+    }, [setNodes]);
 
-            // Process mother relationships
-            if (person.rels.mother) {
-                const motherId = String(person.rels.mother);
-                const personId = String(person.id);
+    // Force recalculation of layout
+    const recalculateLayout = useCallback(() => {
+        applyForceLayout(
+            nodes.map(node => ({ ...node, dragged: false })),
+            edges,
+            layoutDirection
+        );
+    }, [nodes, edges, layoutDirection, applyForceLayout]);
 
-                transformedEdges.push({
-                    id: `mother-${motherId}-${personId}`,
-                    source: motherId,
-                    target: personId,
-                    type: 'straight',
-                    animated: false,
-                    style: { stroke: '#BA68C8', strokeWidth: 2 },
-                    label: 'Mother',
-                    markerEnd: {
-                        type: MarkerType.Arrow,
-                    }
-                });
-            }
-        });
+    // Fix for ResizeObserver issue
+    useEffect(() => {
+        // This adds a small delay before rendering to avoid ResizeObserver loop errors
+        const timer = setTimeout(() => {
+            // Optional: You could trigger a re-render here if needed
+        }, 100);
 
-        setNodes(transformedNodes);
-        setEdges(transformedEdges);
-
-        // Apply layout after nodes are rendered
-        setTimeout(() => applyNetworkLayout(transformedNodes, transformedEdges), 100);
-    }, [networkData, selectedPerson, expandedNodes]);
-
-    // Apply force-directed layout to position nodes
-    const applyNetworkLayout = useCallback((nodes, edges) => {
-        if (nodes.length === 0) return;
-
-        // Use D3 force simulation to position nodes
-        // This is a simplified version for this example
-        const positionedNodes = nodes.map((node, index) => {
-            const baseX = (index % 4) * 300 + 50;
-            const baseY = Math.floor(index / 4) * 200 + 50;
-
-            return {
-                ...node,
-                position: { x: baseX, y: baseY }
-            };
-        });
-
-        setNodes(positionedNodes);
+        return () => clearTimeout(timer);
     }, []);
 
     if (loading) {
@@ -208,36 +254,100 @@ const NetworkDiagram = () => {
 
     return (
         <div className="network-diagram">
-            <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                nodeTypes={nodeTypes}
-                fitView
-                attributionPosition="bottom-left"
-            >
-                <Background />
-                <Controls />
-                <MiniMap />
-            </ReactFlow>
+            <ReactFlowProvider>
+                <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onNodeDragStop={onNodeDragStop}
+                    nodeTypes={nodeTypes}
+                    fitView
+                    attributionPosition="bottom-left"
+                    minZoom={0.2}
+                    maxZoom={1.5}
+                    defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+                    onInit={(instance) => {
+                        reactFlowInstance.current = instance;
+                    }}
+                    elementsSelectable={true}
+                    nodesConnectable={true}
+                    nodesDraggable={true}
+                    edgesFocusable={true}
+                    nodesFocusable={true}
+                    snapToGrid={true}
+                    snapGrid={[15, 15]}
+                    connectionLineType="smoothstep"
+                    defaultEdgeOptions={{
+                        type: 'smoothstep',
+                        animated: false,
+                        style: { strokeWidth: 2 }
+                    }}
+                >
+                    <Background />
+                    <Controls />
+                    <MiniMap />
+
+                    <Panel position="top-right" className="control-panel">
+                        <div className="layout-controls">
+                            <span>Layout:</span>
+                            <button
+                                className={`layout-button ${layoutDirection === 'TB' ? 'active' : ''}`}
+                                onClick={() => onLayoutDirectionChange('TB')}
+                            >
+                                Vertical
+                            </button>
+                            <button
+                                className={`layout-button ${layoutDirection === 'LR' ? 'active' : ''}`}
+                                onClick={() => onLayoutDirectionChange('LR')}
+                            >
+                                Horizontal
+                            </button>
+                        </div>
+
+                        <button
+                            className="control-button"
+                            onClick={recalculateLayout}
+                            title="Reset node positions"
+                        >
+                            Recalculate Layout
+                        </button>
+
+                        <button
+                            className="control-button"
+                            onClick={() => reactFlowInstance.current?.fitView({ padding: 0.2 })}
+                            title="Center view to show all nodes"
+                        >
+                            Reset View
+                        </button>
+
+                        <button
+                            className="control-button clear-button"
+                            onClick={() => resetNetwork()}
+                            title="Clear the network and start over"
+                        >
+                            Clear Network
+                        </button>
+                    </Panel>
+                </ReactFlow>
+            </ReactFlowProvider>
 
             <div className="network-legend">
                 <h4>Relationship Types</h4>
                 <div className="legend-item">
-                    <div className="legend-color" style={{ backgroundColor: '#FF9E80' }}></div>
+                    <div className="legend-color" style={{ backgroundColor: getRelationshipColor('spouse') }}></div>
                     <span>Spouse</span>
                 </div>
                 <div className="legend-item">
-                    <div className="legend-color" style={{ backgroundColor: '#4FC3F7' }}></div>
+                    <div className="legend-color" style={{ backgroundColor: getRelationshipColor('child') }}></div>
                     <span>Child</span>
                 </div>
                 <div className="legend-item">
-                    <div className="legend-color" style={{ backgroundColor: '#81C784' }}></div>
+                    <div className="legend-color" style={{ backgroundColor: getRelationshipColor('father') }}></div>
                     <span>Father</span>
                 </div>
                 <div className="legend-item">
-                    <div className="legend-color" style={{ backgroundColor: '#BA68C8' }}></div>
+                    <div className="legend-color" style={{ backgroundColor: getRelationshipColor('mother') }}></div>
                     <span>Mother</span>
                 </div>
             </div>
