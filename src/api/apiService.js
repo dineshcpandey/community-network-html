@@ -8,7 +8,7 @@ const apiClient = axios.create({
         'Content-Type': 'application/json',
     },
 });
-
+console.log("The URL BEING READ IS : ", API_BASE_URL);
 export const searchPeople = async (query) => {
     try {
         const response = await apiClient.get(`/details/search?name=${encodeURIComponent(query)}`);
@@ -73,7 +73,7 @@ export const updatePerson = async (personId, personData) => {
     }
 };
 
-export default {
+const apiService = {
     searchPeople,
     searchByLocation,
     getPersonDetails,
@@ -81,3 +81,5 @@ export default {
     addNewPerson,
     updatePerson,
 };
+
+export default apiService;
