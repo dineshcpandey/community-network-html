@@ -15,15 +15,16 @@
   <script src="https://d3js.org/d3.v5.min.js"></script>
 
   <!-- Family Chart library -->
-  <script src="./family-chart.min.js"></script>
+  <script src="%PUBLIC_URL%/family-chart.min.js"></script>
+
+  <!-- Family Chart initialization -->
+  <script src="%PUBLIC_URL%/initFamilyChart.js"></script>
 
   <!-- Fallback in case CDN fails -->
   <script>
     if (typeof d3 === 'undefined') {
       document.write('<script src="%PUBLIC_URL%/d3.v5.min.js"><\/script>');
-    }
-    if (typeof f3 === 'undefined') {
-      document.write('<script src="%PUBLIC_URL%/family-chart.min.js"><\/script>');
+      console.warn('D3.js CDN load failed, using local fallback');
     }
   </script>
 </head>

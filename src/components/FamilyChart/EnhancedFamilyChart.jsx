@@ -37,7 +37,9 @@ const EnhancedFamilyChart = () => {
                 .attr('class', 'family-chart-svg');
 
             svgRef.current = svg;
-
+            console.log("Draggable Family Chart Line 40")
+            console.dir(svg)
+            console.log("d3", d3)
             // Add zoom functionality
             const zoom = d3.zoom()
                 .scaleExtent([0.1, 2])
