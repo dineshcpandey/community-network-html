@@ -6,9 +6,10 @@ import {
     createCardDisplay
 } from '../../utils/familyChartUtils';
 import './FamilyChartTree.css';
+
 const FamilyChartTree = () => {
-    const containerRef = useRef(null);
     const { networkData, selectedPerson, expandNode, resetNetwork } = useNetwork();
+    const containerRef = useRef(null);
     const chartRef = useRef(null);
     const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +51,6 @@ const FamilyChartTree = () => {
             console.log("Component unmounting");
         };
     }, []);
-
 
 
     // Enable or disable dragging on nodes - wrapped in useCallback
@@ -192,9 +192,6 @@ const FamilyChartTree = () => {
         });
     }, [draggingEnabled]); // Include draggingEnabled as a dependency
 
-
-
-
     // Create and setup the family chart - this will run whenever containerMounted changes
     useEffect(() => {
         if (!containerRef.current || !containerMounted) {
@@ -230,8 +227,6 @@ const FamilyChartTree = () => {
                     // Create family chart
                     console.log("Creating family chart");
                     const chart = f3.createChart(containerRef.current, formattedData);
-                    console.log("Creating family chart 2 ", containerRef.current);
-                    console.dir(chart);
 
                     // Configure chart
                     chart
@@ -249,14 +244,8 @@ const FamilyChartTree = () => {
 
                     // Configure card display
                     console.log("Configuring card display");
-                    console.dir(chart);
-                    console.log("ChartRef::::::::::::::::");
-                    console.dir(chartRef);
-                    console.log("Now the containerRef");
-                    console.dir(containerRef);
                     const cardSvg = f3.CardSvg(containerRef.current, chart.store);
                     cardSvg.setCardDisplay(createCardDisplay());
-                    console.dir("on Line 252 checing the containerRef ", containerRef);
 
                     // Configure card dimensions
                     cardSvg.setCardDim({
@@ -294,22 +283,13 @@ const FamilyChartTree = () => {
 
                     // Create initial view
                     console.log("Updating tree with initial view");
-                    console.dir(chartRef);
-                    console.log("ChartRef.current ", chartRef.current);
-                    console.dir(chart);
-                    console.log("=========================================");
-                    try {
-                        chart.updateTree({ initial: true });
-                    } catch (err) {
-                        console.error("ERRRR something happened ", err);
-                    }
-
+                    chart.updateTree({ initial: true });
 
                     // Add drag behavior
-                    // if (draggingEnabled) {
-                    //     console.log("Enabling initial drag behavior");
-                    //     enableNodeDragging(f3);
-                    // }
+                    if (draggingEnabled) {
+                        console.log("Enabling initial drag behavior");
+                        enableNodeDragging(f3);
+                    }
 
                     // Store reference to chart
                     chartRef.current = chart;
@@ -328,42 +308,303 @@ const FamilyChartTree = () => {
             });
     }, [networkData, selectedPerson, expandNode, draggingEnabled, enableNodeDragging, containerMounted]); // Added containerMounted dependency
 
-
-
-
-
-
+    // Update chart when window is resized
     useEffect(() => {
-        console.log("Simple component mounted");
-        console.log("Container ref:", containerRef.current);
+        const handleResize = () => {
+            if (chartRef.current) {
+                try {
+                    // Update tree with fit option to resize properly
+                    chartRef.current.updateTree({
+                        tree_position: 'fit'
+                    });
+
+                    // Re-apply draggable after a small delay
+                    setTimeout(() => {
+                        if (draggingEnabled) {
+                            enableNodeDragging(window.f3);
+                        }
+                    }, 300);
+                } catch (error) {
+                    console.error('Error resizing chart:', error);
+                }
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [draggingEnabled, enableNodeDragging]);
+
+    // Toggle dragging
+    const toggleDragging = () => {
+        console.log("Toggling dragging state:", draggingEnabled, "->", !draggingEnabled);
+        const newState = !draggingEnabled;
+        setDraggingEnabled(newState);
+
+        // Apply or remove drag behavior immediately
+        setTimeout(() => {
+            if (chartRef.current) {
+                enableNodeDragging(window.f3);
+            }
+        }, 0);
+    };
+
+    // Handle layout change
+    const handleOrientationChange = (orientation) => {
+        if (!chartRef.current) return;
+
+        try {
+            if (orientation === 'vertical') {
+                chartRef.current.setOrientationVertical();
+            } else {
+                chartRef.current.setOrientationHorizontal();
+            }
+
+            chartRef.current.updateTree();
+
+            // Re-apply draggable after update
+            setTimeout(() => {
+                if (draggingEnabled) {
+                    enableNodeDragging(window.f3);
+                }
+            }, 1000);
+        } catch (error) {
+            console.error('Error changing orientation:', error);
+            setError('Failed to change orientation. Try refreshing the page.');
+        }
+    };
+
+    // Handle reset button click
+    const handleReset = () => {
+        resetNetwork();
+    };
+
+    // Handle reset positions
+    const handleResetPositions = () => {
+        if (!chartRef.current) return;
+
+        try {
+            // Reset dragged flag for all nodes
+            const treeData = chartRef.current.getTree().data;
+            treeData.forEach(node => {
+                if (node.dragged) {
+                    node.dragged = false;
+                }
+            });
+
+            // Update the chart
+            chartRef.current.updateTree();
+
+            // Re-apply draggable after update
+            setTimeout(() => {
+                if (draggingEnabled) {
+                    enableNodeDragging(window.f3);
+                }
+            }, 1000);
+        } catch (error) {
+            console.error('Error resetting positions:', error);
+        }
+    };
+
+    // Handle fit to screen
+    const handleFitToScreen = () => {
+        if (!chartRef.current) return;
+
+        try {
+            chartRef.current.updateTree({
+                tree_position: 'fit'
+            });
+
+            // Re-apply draggable after update
+            setTimeout(() => {
+                if (draggingEnabled) {
+                    enableNodeDragging(window.f3);
+                }
+            }, 1000);
+        } catch (error) {
+            console.error('Error fitting chart to screen:', error);
+        }
+    };
+
+    // Handle expand all nodes
+    const handleExpandAll = () => {
+        if (!chartRef.current) return;
+
+        try {
+            // Expand all nodes
+            networkData.forEach(person => {
+                if (person.id) {
+                    expandNode(person.id);
+                }
+            });
+
+            // Update the chart
+            chartRef.current.updateTree();
+
+            // Re-apply draggable after update
+            setTimeout(() => {
+                if (draggingEnabled) {
+                    enableNodeDragging(window.f3);
+                }
+            }, 1000);
+        } catch (error) {
+            console.error('Error expanding nodes:', error);
+        }
+    };
+
+    // Add this at the top of your component
+    console.log("FamilyChartTree component rendering/re-rendering");
+
+    // Add this useEffect
+    useEffect(() => {
+        console.log("Component mounted");
+
+        // Log container existence immediately
+        console.log("Container exists immediately?", containerRef.current !== null);
+
+        // Check again after a short delay
+        setTimeout(() => {
+            console.log("Container exists after timeout?", containerRef.current !== null);
+            if (containerRef.current) {
+                console.log("Container dimensions:", {
+                    width: containerRef.current.offsetWidth,
+                    height: containerRef.current.offsetHeight
+                });
+            }
+        }, 500);
+
+        return () => {
+            console.log("Component unmounting");
+        };
     }, []);
 
+
+    // Render error state
+    if (error) {
+        return (
+            <div className="family-chart-error">
+                <p>{error}</p>
+                <button
+                    className="chart-control-button"
+                    onClick={() => window.location.reload()}
+                >
+                    Reload Page
+                </button>
+            </div>
+        );
+    }
+
+    // Render loading state
+    if (isLoading) {
+        return (
+            <div className="family-chart-loading">
+                <p>Loading family chart...</p>
+            </div>
+        );
+    }
+
+    // Render empty state
+    if (networkData.length === 0) {
+        return (
+            <div className="family-chart-empty">
+                <p>Search for a person to view their family tree</p>
+            </div>
+        );
+    }
+
     return (
-        <div style={{ padding: '20px', border: '5px solid red', minHeight: '300px' }}>
-            <h2>Family Chart Tree</h2>
-            <div
-                ref={containerRef}
-                style={{
-                    width: '100%',
-                    height: '200px',
-                    backgroundColor: '#f0f0f0',
-                    border: '2px dashed #333'
-                }}
-            >
-                Container for chart
+        <div className="family-chart-page">
+            {/* Standalone drag toggle for better visibility */}
+            <div className="drag-toggle-standalone">
+                <button
+                    className={`toggle-drag-button ${draggingEnabled ? 'active' : ''}`}
+                    onClick={toggleDragging}
+                >
+                    {draggingEnabled ? "Dragging Enabled (Click to Disable)" : "Dragging Disabled (Click to Enable)"}
+                </button>
+            </div>
+
+            <div className="family-chart-container">
+                <div className="family-chart-controls">
+                    <button
+                        className="chart-control-button"
+                        onClick={() => handleOrientationChange('vertical')}
+                        title="Switch to Vertical Layout"
+                    >
+                        Vertical
+                    </button>
+                    <button
+                        className="chart-control-button"
+                        onClick={() => handleOrientationChange('horizontal')}
+                        title="Switch to Horizontal Layout"
+                    >
+                        Horizontal
+                    </button>
+                    <button
+                        className="chart-control-button"
+                        onClick={handleFitToScreen}
+                        title="Fit Tree to Screen"
+                    >
+                        Fit Screen
+                    </button>
+                    <button
+                        className="chart-control-button"
+                        onClick={handleExpandAll}
+                        title="Expand All Nodes"
+                    >
+                        Expand All
+                    </button>
+                    <button
+                        className="chart-control-button"
+                        onClick={handleReset}
+                        title="Reset the Network View"
+                    >
+                        Reset
+                    </button>
+                    <button
+                        className="chart-control-button reset-positions-btn"
+                        onClick={handleResetPositions}
+                        title="Reset All Manual Positions"
+                    >
+                        Reset Positions
+                    </button>
+                </div>
+
+                {/* This element might not be rendered properly */}
+                <div
+                    style={{
+                        position: 'absolute',
+                        bottom: '10px',
+                        left: '10px',
+                        zIndex: 10,
+                        padding: '8px 12px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        borderRadius: '4px',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                        fontSize: '14px',
+                        color: '#718096'
+                    }}
+                    className="family-chart-info"
+                >
+                    <p>
+                        {draggingEnabled
+                            ? "Drag cards to reposition. Click to expand network."
+                            : "Click on a person to expand their network."}
+                    </p>
+                </div>
+
+                {/* The key container - added debugging attributes */}
+                <div
+                    ref={containerRef}
+                    className="family-chart-tree"
+                    data-testid="family-chart-container"
+                    style={{ width: '100%', height: '100%', border: '1px solid transparent' }}
+                ></div>
             </div>
         </div>
     );
-
-
-
-
-
-
-
-
-
-
 };
 
 export default FamilyChartTree;

@@ -125,7 +125,7 @@
 }
 
 .family-chart-container:hover .family-chart-info {
-    opacity: 0;
+    opacity: 100;
 }
 
 /* Status States */

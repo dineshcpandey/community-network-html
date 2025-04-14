@@ -48,10 +48,12 @@ function App() {
                         {visualizationType === 'default' ? (
                             <FamilyChart />
                         ) : (
-                            <FamilyChartTree />
+                            <div style={{ border: '3px solid blue', padding: '10px' }}>
+                                <p>FamilyChartTree Container</p>
+                                <FamilyChartTree />
+                            </div>
                         )}
                     </div>
-
                     {showAddForm && (
                         <div className="modal-overlay">
                             <div className="modal-content">

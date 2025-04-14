@@ -37,7 +37,8 @@ if (typeof window.f3 === 'undefined') {
 
     // Try to load the script dynamically
     const script = document.createElement('script');
-    script.src = './family-chart.min.js';
+    //script.src = './family-chart.min.js';
+    script.src = './family-chart.js';
     script.async = true;
     script.onload = function () {
         console.log('Family Chart library loaded successfully.');
