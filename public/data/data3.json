@@ -60,7 +60,8 @@
     {
         "id": "1",
         "rels": {
-            "father": "4",
+            "father": "3",
+            "mother": "86",
             "spouses": [
                 "2"
             ],
@@ -161,5 +162,55 @@
             "desc": "Koderma Delhi ",
             "label": "Mayuresh Pandey"
         }
+    },
+    {
+        "id": "3",
+        "rels": {
+            "spouses": [
+                "86"
+            ],
+            "children": [
+                "1"
+            ]
+        },
+        "data": {
+            "first name": "Ganpati",
+            "last name": "Pandey",
+            "birthday": null,
+            "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg",
+            "gender": "M",
+            "location": "-",
+            "contact": {
+                "email": null,
+                "phone": null
+            },
+            "work": null,
+            "nativePlace": "Koderma"
+        },
+        "main": false
+    },
+    {
+        "id": "86",
+        "rels": {
+            "spouses": [
+                "3"
+            ],
+            "children": []
+        },
+        "data": {
+            "first name": "Fulkumari",
+            "last name": "Pandey",
+            "birthday": null,
+            "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg",
+            "gender": "F",
+            "location": null,
+            "contact": {
+                "email": null,
+                "phone": null
+            },
+            "work": null,
+            "nativePlace": null
+        },
+        "main": false
     }
 ]

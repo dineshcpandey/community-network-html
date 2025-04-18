@@ -2,112 +2,258 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>my-family-chart</title>
+    <title>My Family Chart</title>
     <script src="https://unpkg.com/d3@6"></script>
-    <script type="module" src="https://unpkg.com/family-chart@0.2.1"></script>
+    <script type="module" src="./family-chart.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/family-chart@0.2.1/dist/styles/family-chart.css">
+    <style>
+        .switch-data-btn {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            padding: 8px 12px;
+            background-color: #444;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        #data-source-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            padding: 4px 8px;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
 </head>
 
 <body>
     <div id="FamilyChart" class="f3"
         style="width:100%;height:900px;margin:auto;background-color:rgb(33,33,33);color:#fff;"></div>
+    <div id="data-source-indicator">Current Data: data2.json</div>
+
     <script type="module">
+        let latestData = [];
+        let currentDataSource = './data/data2.json';
+        let f3Chart; // Store chart reference globally
 
-        fetch('./data/data.json')
-            .then(res => res.json())
-            .then(data => create(data))
-            .catch(err => console.error(err))
+        // Initial chart loading
+        loadChartData(currentDataSource);
 
-        function create(data) {
-            const cont = document.querySelector("#FamilyChart")
-            const store = f3.createStore({
-                data,
-                node_separation: 250,
-                level_separation: 150
-            })
-            const svg = f3.createSvg(cont)
-            const Card = f3.elements.Card({
-                store,
-                svg,
-                card_dim: { w: 220, h: 70, text_x: 75, text_y: 15, img_w: 60, img_h: 60, img_x: 5, img_y: 5 },
-                card_display: [d => `${d.data["label"]}`, d => d.data["desc"]],
-                mini_tree: true,
-                link_break: false
-            })
+        // Function to load data and create/update chart
+        function loadChartData(dataSource) {
+            fetch(dataSource)
+                .then(res => res.json())
+                .then(data => {
+                    // Pre-process the data to remove invalid references
+                    const processedData = cleanInvalidReferences(data);
 
-            store.setOnUpdate(props => f3.view(store.getTree(), svg, Card, props || {}))
-            store.updateMainId('Q43274')  // Charles III
-            store.updateTree({ initial: true })
+                    if (f3Chart) {
+                        // Update existing chart
+                        updateChart(processedData);
+                    } else {
+                        // Create new chart
+                        create(processedData);
+                    }
+                    // Update the data source indicator
+                    document.getElementById('data-source-indicator').textContent =
+                        'Current Data: ' + dataSource.split('/').pop();
 
-            // with person_id this function will update the tree
-            function updateTreeWithNewMainPerson(person_id, animation_initial = true) {
-                store.updateMainId(person_id)
-                store.updateTree({ initial: animation_initial })
-            }
-
-            // random person
-
-            d3.select(document.querySelector("#FamilyChart"))
-                .append("button")
-                .text("Random Person")
-                .attr("style", "position: absolute; top: 10px; right: 10px; z-index: 1000;")
-                .on("click", () => {
-                    const random_person = data[Math.floor(Math.random() * data.length)]
-                    const person_id = random_person["id"]
-                    updateTreeWithNewMainPerson(person_id, false)
+                    // Store the processed data for download
+                    latestData = processedData;
                 })
-
-
-            // setup search dropdown
-            // this is basic showcase, please use some autocomplete component and style it as you want
-
-            const all_select_options = []
-            data.forEach(d => {
-                if (all_select_options.find(d0 => d0.value === d["id"])) return
-                all_select_options.push({ label: `${d.data["label"]}`, value: d["id"] })
-            })
-            const search_cont = d3.select(document.querySelector("#FamilyChart")).append("div")
-                .attr("style", "position: absolute; top: 10px; left: 10px; width: 150px; z-index: 1000;")
-                .on("focusout", () => {
-                    setTimeout(() => {
-                        if (!search_cont.node().contains(document.activeElement)) {
-                            updateDropdown([]);
-                        }
-                    }, 200);
-                })
-            const search_input = search_cont.append("input")
-                .attr("style", "width: 100%;")
-                .attr("type", "text")
-                .attr("placeholder", "Search")
-                .on("focus", activateDropdown)
-                .on("input", activateDropdown)
-
-            const dropdown = search_cont.append("div").attr("style", "overflow-y: auto; max-height: 300px; background-color: #000;")
-                .attr("tabindex", "0")
-                .on("wheel", (e) => {
-                    e.stopPropagation()
-                })
-
-            function activateDropdown() {
-                const search_input_value = search_input.property("value")
-                const filtered_options = all_select_options.filter(d => d.label.toLowerCase().includes(search_input_value.toLowerCase()))
-                updateDropdown(filtered_options)
-            }
-
-            function updateDropdown(filtered_options) {
-                dropdown.selectAll("div").data(filtered_options).join("div")
-                    .attr("style", "padding: 5px;cursor: pointer;border-bottom: .5px solid currentColor;")
-                    .on("click", (e, d) => {
-                        updateTreeWithNewMainPerson(d.value, true)
-                    })
-                    .text(d => d.label)
-            }
+                .catch(err => console.error('Failed to load ' + dataSource, err));
         }
 
-    </script>
+        // Function to remove references to non-existent IDs
+        function cleanInvalidReferences(data) {
+            // Clone the data to avoid mutating the original
+            const processedData = JSON.parse(JSON.stringify(data));
 
+            // Track all existing IDs
+            const existingIds = new Set(processedData.map(item => item.id));
+
+            // Clean up invalid references in each person's relationships
+            processedData.forEach(person => {
+                if (!person.rels) return;
+
+                // Check and clean father reference
+                if (person.rels.father && !existingIds.has(person.rels.father)) {
+                    console.log(`Removing invalid father reference: ${person.rels.father} for person ${person.id}`);
+                    delete person.rels.father;
+                }
+
+                // Check and clean mother reference
+                if (person.rels.mother && !existingIds.has(person.rels.mother)) {
+                    console.log(`Removing invalid mother reference: ${person.rels.mother} for person ${person.id}`);
+                    delete person.rels.mother;
+                }
+
+                // Check and clean spouse references
+                if (person.rels.spouses && Array.isArray(person.rels.spouses)) {
+                    person.rels.spouses = person.rels.spouses.filter(spouseId => {
+                        const isValid = existingIds.has(spouseId);
+                        if (!isValid) {
+                            console.log(`Removing invalid spouse reference: ${spouseId} for person ${person.id}`);
+                        }
+                        return isValid;
+                    });
+                    // If no spouses left, remove the property
+                    if (person.rels.spouses.length === 0) {
+                        delete person.rels.spouses;
+                    }
+                }
+
+                // Check and clean children references
+                if (person.rels.children && Array.isArray(person.rels.children)) {
+                    person.rels.children = person.rels.children.filter(childId => {
+                        const isValid = existingIds.has(childId);
+                        if (!isValid) {
+                            console.log(`Removing invalid child reference: ${childId} for person ${person.id}`);
+                        }
+                        return isValid;
+                    });
+                    // If no children left, remove the property
+                    if (person.rels.children.length === 0) {
+                        delete person.rels.children;
+                    }
+                }
+            });
+
+            // Update relationships to ensure bidirectional connections
+            processedData.forEach(person => {
+                const rels = person.rels || {};
+
+                // Handle parent-child relationships
+                if (rels.children && Array.isArray(rels.children)) {
+                    rels.children.forEach(childId => {
+                        const child = processedData.find(p => p.id === childId);
+                        if (child) {
+                            child.rels = child.rels || {};
+                            if (person.data.gender === "M" && child.rels.father !== person.id) {
+                                child.rels.father = person.id;
+                            } else if (person.data.gender === "F" && child.rels.mother !== person.id) {
+                                child.rels.mother = person.id;
+                            }
+                        }
+                    });
+                }
+
+                // Handle spouse relationships
+                if (rels.spouses && Array.isArray(rels.spouses)) {
+                    rels.spouses.forEach(spouseId => {
+                        const spouse = processedData.find(p => p.id === spouseId);
+                        if (spouse) {
+                            spouse.rels = spouse.rels || {};
+                            spouse.rels.spouses = spouse.rels.spouses || [];
+                            if (!spouse.rels.spouses.includes(person.id)) {
+                                spouse.rels.spouses.push(person.id);
+                            }
+                        }
+                    });
+                }
+            });
+
+            return processedData;
+        }
+
+        // Function to update existing chart with new data
+        function updateChart(data) {
+            f3Chart.updateData(data);
+            f3Chart.updateTree({ initial: true });
+        }
+
+        // Create chart function
+        function create(data) {
+            f3Chart = f3.createChart('#FamilyChart', data)
+                .setTransitionTime(1000)
+                .setCardXSpacing(250)
+                .setCardYSpacing(150)
+                .setOrientationVertical()
+                .setSingleParentEmptyCard(false) // Change to false to prevent empty cards
+                ;
+
+            const f3Card = f3Chart.setCard(f3.CardHtml)
+                .setCardDisplay([["first name", "last name"], ["birthday"]])
+                .setCardDim({})
+                .setMiniTree(true)
+                .setStyle('imageRect')
+                .setOnHoverPathToMain();
+
+            const f3EditTree = f3Chart.editTree()
+                .fixed(true)
+                .setFields(["first name", "last name", "birthday", "avatar"])
+                .setEditFirst(true);
+
+            f3EditTree.setEdit();
+
+            f3Card.setOnCardClick((e, d) => {
+                console.log("Card clicked - ID:", d.data.id);
+
+                // Toggle data source on card click
+                const newDataSource = currentDataSource.includes('data2.json') ?
+                    './data/data3.json' : './data/data2.json';
+
+                // Load the new data
+                currentDataSource = newDataSource;
+                loadChartData(currentDataSource);
+
+                // Still allow the original functionality
+                if (f3EditTree.isAddingRelative()) return;
+                f3Card.onCardClickDefault(e, d);
+            });
+
+            f3Chart.updateTree({ initial: true });
+            f3EditTree.open(f3Chart.getMainDatum());
+
+            // Add switch data button
+            const switchBtn = document.createElement('button');
+            switchBtn.innerText = 'Switch Data Source';
+            switchBtn.className = 'switch-data-btn';
+            switchBtn.onclick = () => {
+                const newDataSource = currentDataSource.includes('data2.json') ?
+                    './data/data3.json' : './data/data2.json';
+                currentDataSource = newDataSource;
+                loadChartData(currentDataSource);
+            };
+            document.getElementById("FamilyChart").appendChild(switchBtn);
+
+            // Download Button
+            const downloadBtn = document.createElement('button');
+            downloadBtn.innerText = 'Download JSON';
+            downloadBtn.style.position = 'absolute';
+            downloadBtn.style.bottom = '10px';
+            downloadBtn.style.right = '10px';
+            downloadBtn.style.zIndex = '1000';
+            downloadBtn.style.padding = '8px 12px';
+            downloadBtn.style.backgroundColor = '#444';
+            downloadBtn.style.color = '#fff';
+            downloadBtn.style.border = 'none';
+            downloadBtn.style.cursor = 'pointer';
+            downloadBtn.style.borderRadius = '4px';
+
+            downloadBtn.onclick = () => {
+                const blob = new Blob([JSON.stringify(latestData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `family-chart-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            document.getElementById("FamilyChart").appendChild(downloadBtn);
+        }
+    </script>
 </body>
 
 </html>
