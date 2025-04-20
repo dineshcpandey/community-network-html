@@ -60,7 +60,6 @@
     {
         "id": "1",
         "rels": {
-            "father": "4",
             "spouses": [
                 "2"
             ],

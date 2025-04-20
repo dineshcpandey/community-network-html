@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Tree Explorer</title>
+    <script src="https://unpkg.com/d3@6"></script>
+    <script type="module" src="./family-chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/family-chart@0.2.1/dist/styles/family-chart.css">
+    <link rel="stylesheet" href="./styles/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <header class="app-header">
+            <h1>Family Tree Explorer</h1>
+        </header>
+
+        <div class="app-content">
+            <aside class="app-sidebar">
+                <!-- Search Component -->
+                <div class="search-component">
+                    <h2>Search</h2>
+                    <form id="search-form">
+                        <div class="search-type">
+                            <label>
+                                <input type="radio" name="searchType" value="name" checked>
+                                Name
+                            </label>
+                            <label>
+                                <input type="radio" name="searchType" value="location">
+                                Location
+                            </label>
+                        </div>
+                        <div class="search-input-container">
+                            <input type="text" id="search-input" placeholder="Search by name...">
+                            <button type="submit" id="search-button">Search</button>
+                        </div>
+                    </form>
+                    <div id="search-error" class="search-error" style="display: none;"></div>
+                    <div id="search-results" class="search-results">
+                        <div id="results-count" class="results-count" style="display: none;"></div>
+                        <div id="person-cards" class="person-cards"></div>
+                    </div>
+                </div>
+
+                <!-- Control Panel -->
+                <div class="control-panel">
+                    <h2>Family Tree Controls</h2>
+                    <div class="control-panel-section">
+                        <button id="edit-button" class="control-btn edit-btn">Edit Person</button>
+                        <button id="highlight-button" class="control-btn highlight-btn" disabled>Highlight Connected
+                            Nodes</button>
+                    </div>
+                    <div class="control-panel-section">
+                        <button id="reset-button" class="control-btn reset-btn">Reset Chart</button>
+                        <button id="download-button" class="control-btn download-btn">Download JSON</button>
+                    </div>
+                    <div id="selected-info" class="selected-node-info" style="display: none;">
+                        Selected Node: <span id="selected-node-id"></span>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="app-main">
+                <!-- Family Chart -->
+                <div id="FamilyChart" class="f3"></div>
+                <div id="loading-indicator" class="loading-indicator">Loading data...</div>
+                <div id="data-source-indicator" class="data-source-indicator">Initial data loaded</div>
+
+                <!-- Edit Form (initially hidden) -->
+                <div id="edit-form" class="edit-form">
+                    <div class="edit-form-header">
+                        <h2 id="edit-form-title">Edit Person</h2>
+                        <button id="close-edit-form" class="close-button">&times;</button>
+                    </div>
+                    <div id="edit-form-content" class="edit-form-content"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- JavaScript Modules -->
+    <script type="module" src="./js/app.js"></script>
+</body>
+
+</html>
