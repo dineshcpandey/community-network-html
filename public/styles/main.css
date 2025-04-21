@@ -811,3 +811,72 @@ body {
         opacity: 0;
     }
 }
+
+
+/* Add these styles to your main.css file */
+
+/* Update Success Summary */
+.update-success-summary {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(46, 204, 113, 0.1);
+    border: 1px solid #2ecc71;
+    border-radius: 4px;
+    animation: fadeIn 0.3s ease;
+}
+
+.update-success-summary h3 {
+    margin: 0 0 15px 0;
+    color: #27ae60;
+    font-size: 1.1rem;
+    border-bottom: 1px solid #2ecc71;
+    padding-bottom: 8px;
+}
+
+.summary-item {
+    margin-bottom: 8px;
+    line-height: 1.5;
+    display: flex;
+}
+
+.summary-label {
+    font-weight: 600;
+    color: #34495e;
+    width: 80px;
+    flex-shrink: 0;
+}
+
+.summary-value {
+    color: #2c3e50;
+}
+
+.close-edit-form-btn {
+    display: block;
+    margin: 20px auto 5px auto;
+    padding: 8px 20px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.close-edit-form-btn:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+}
+
+.close-edit-form-btn:active {
+    transform: translateY(0);
+}
+
+/* Make the success message more prominent */
+.form-status-message.success {
+    background-color: rgba(46, 204, 113, 0.2);
+    color: #27ae60;
+    border: 1px solid #2ecc71;
+    font-weight: 600;
+    padding: 12px;
+}

@@ -181,6 +181,7 @@ function handleAddPersonFromSearch(person) {
         });
 }
 
+
 // Toggle edit form visibility
 function toggleEditForm() {
     // Debug check for selectedNode
@@ -248,10 +249,16 @@ function toggleEditForm() {
             if (editFormContent) {
                 editFormContent.innerHTML = '';
             }
+
+            // Import and call the function to clear the current edit person reference
+            import('./chart.js').then(module => {
+                if (module.clearCurrentEditPerson) {
+                    module.clearCurrentEditPerson();
+                }
+            });
         }
     }
 }
-
 
 // Toggle highlight mode
 function toggleHighlightMode() {

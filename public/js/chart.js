@@ -9,6 +9,8 @@ import { fetchNetworkData, updatePersonData } from './api.js';
 let f3Chart = null;
 let f3Card = null;
 let f3EditTree = null;
+// Track the currently edited person
+let currentEditPerson = null;
 
 /**
  * Initialize the family chart
@@ -95,10 +97,15 @@ export async function initializeChart(data, options = {}) {
         ])
             .fixed(true)  // Keep the form fixed in position
             .setEditFirst(true)  // Start in edit mode
-            .setOnChange(async (datum) => {
+            .setOnChange(async () => {
                 try {
-                    // When form is submitted, call the API to update the person data
-                    console.log("Form submitted for:", datum.id);
+                    // Use the currentEditPerson variable since the onChange callback doesn't pass datum
+                    if (!currentEditPerson) {
+                        console.error("Form change handler: No current edit person found");
+                        throw new Error("No person data available for update");
+                    }
+
+                    console.log("Form submitted for:", currentEditPerson.id);
 
                     // Show a status message in the form
                     const statusMsg = document.createElement('div');
@@ -107,13 +114,63 @@ export async function initializeChart(data, options = {}) {
                     editFormContent.appendChild(statusMsg);
 
                     // Call the API to update the person data
-                    await updatePersonData(datum.id, datum);
+                    await updatePersonData(currentEditPerson.id, currentEditPerson);
 
                     // Update the status message
                     statusMsg.className = 'form-status-message success';
                     statusMsg.textContent = 'Changes saved successfully!';
 
-                    // Remove the status message after a delay
+                    // Create a success summary with data highlights
+                    const successSummary = document.createElement('div');
+                    successSummary.className = 'update-success-summary';
+
+                    // Format the updated data for display
+                    const firstName = currentEditPerson.data["first name"] || '';
+                    const lastName = currentEditPerson.data["last name"] || '';
+                    const location = currentEditPerson.data.location || 'Not specified';
+                    const gender = currentEditPerson.data.gender === 'M' ? 'Male' :
+                        currentEditPerson.data.gender === 'F' ? 'Female' : 'Not specified';
+
+                    successSummary.innerHTML = `
+            <h3>Updated Information</h3>
+            <div class="summary-item">
+                <span class="summary-label">Name:</span>
+                <span class="summary-value">${firstName} ${lastName}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Gender:</span>
+                <span class="summary-value">${gender}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Location:</span>
+                <span class="summary-value">${location}</span>
+            </div>
+            ${currentEditPerson.data.birthday ? `
+                <div class="summary-item">
+                    <span class="summary-label">Birthday:</span>
+                    <span class="summary-value">${currentEditPerson.data.birthday}</span>
+                </div>
+            ` : ''}
+        `;
+
+                    // Add a close button
+                    const closeBtn = document.createElement('button');
+                    closeBtn.className = 'close-edit-form-btn';
+                    closeBtn.textContent = 'Close';
+                    closeBtn.addEventListener('click', () => {
+                        // Find and click the existing close button to reuse its functionality
+                        const existingCloseBtn = document.getElementById('close-edit-form');
+                        if (existingCloseBtn) {
+                            existingCloseBtn.click();
+                        }
+                    });
+
+                    successSummary.appendChild(closeBtn);
+
+                    // Add to the form
+                    editFormContent.appendChild(successSummary);
+
+                    // Remove the status message after a delay - but keep the summary
                     setTimeout(() => {
                         if (statusMsg.parentNode) {
                             statusMsg.parentNode.removeChild(statusMsg);
@@ -216,12 +273,25 @@ export function openEditTree(person) {
     }
 
     try {
+        // Store the person being edited
+        currentEditPerson = person;
+        console.log('Editing person:', currentEditPerson.id);
+
         // Open edit form for this person
         f3EditTree.open({ data: person });
         console.log('Edit tree opened for person:', person.id);
     } catch (error) {
         console.error('Error opening edit tree:', error);
+        currentEditPerson = null; // Reset on error
     }
+}
+
+/**
+ * Clear current edit person reference
+ */
+export function clearCurrentEditPerson() {
+    currentEditPerson = null;
+    console.log('Cleared current edit person reference');
 }
 
 /**
@@ -245,4 +315,5 @@ export function resetChart() {
     f3Chart = null;
     f3Card = null;
     f3EditTree = null;
+    currentEditPerson = null;
 }

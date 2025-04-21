@@ -1,5 +1,5 @@
 // Edit Form functionality
-import { getChartInstance, openEditTree } from './chart.js';
+import { getChartInstance, openEditTree, clearCurrentEditPerson } from './chart.js';
 
 // Elements
 const editForm = document.getElementById('edit-form');
@@ -62,6 +62,9 @@ export function closeEditForm() {
     if (editForm) {
         editForm.classList.remove('visible');
     }
+
+    // Clear the current edit person reference
+    clearCurrentEditPerson();
 }
 
 /**
