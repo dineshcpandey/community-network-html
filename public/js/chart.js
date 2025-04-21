@@ -1,13 +1,12 @@
 // Chart functionality
 
 import { mergeNetworkData, cleanInvalidReferences } from './dataUtils.js';
-import { chartData } from './app.js';
+import { chartData as appChartData, updateChartDataStore } from './app.js';
 
 // Global chart instance
 let f3Chart = null;
 let f3Card = null;
 let f3EditTree = null;
-
 /**
  * Initialize the family chart
  * @param {Array} data - Chart data
@@ -34,6 +33,22 @@ export async function initializeChart(data, options = {}) {
 
         // Clear any existing chart
         chartContainer.innerHTML = '';
+
+        // If no data provided, display empty state message
+        if (!data || data.length === 0) {
+            const emptyStateEl = document.createElement('div');
+            emptyStateEl.className = 'empty-chart-message';
+            emptyStateEl.innerHTML = `
+                <div class="empty-chart-content">
+                    <h2>Family Tree is Empty</h2>
+                    <p>Use the search function to find and add people to your family tree.</p>
+                    <div class="empty-chart-icon">👪</div>
+                </div>
+            `;
+
+            chartContainer.appendChild(emptyStateEl);
+            return null; // Return early, no chart to create
+        }
 
         // Create new chart instance
         f3Chart = window.f3.createChart('#FamilyChart', data)
@@ -98,9 +113,16 @@ export async function updateChartData(networkData) {
     }
 
     try {
-        console.log("Chart.js ", updateChartData)
+        console.log("Chart.js: Updating chart data with new network data:", networkData.length, "items");
+
+        // Get the latest chart data from the app
+        const currentChartData = appChartData.slice();
+
         // Merge network data with existing data
-        const mergedData = mergeNetworkData(chartData, networkData);
+        const mergedData = mergeNetworkData(currentChartData, networkData);
+
+        // Update the central store in app.js
+        updateChartDataStore(mergedData);
 
         // Update chart
         f3Chart.updateData(mergedData);
@@ -124,8 +146,8 @@ export function openEditTree(nodeId) {
     }
 
     try {
-        // Find node data
-        const nodeDatum = chartData.find(d => d.id === nodeId);
+        // Find node data from the app's chart data store
+        const nodeDatum = appChartData.find(d => d.id === nodeId);
         if (!nodeDatum) {
             console.error('Node not found:', nodeId);
             return;
@@ -160,4 +182,4 @@ export function resetChart() {
     f3Chart = null;
     f3Card = null;
     f3EditTree = null;
-}
+}   

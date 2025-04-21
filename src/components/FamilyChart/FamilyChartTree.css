@@ -1,0 +1,401 @@
+/* Family Chart Page Container */
+.family-chart-page {
+    position: relative;
+    width: 100%;
+}
+
+/* Standalone Drag Toggle */
+.drag-toggle-standalone {
+    text-align: center;
+    margin-bottom: 15px;
+    position: relative;
+    z-index: 100;
+}
+
+.toggle-drag-button {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-drag-button.active {
+    background-color: var(--color-success);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.toggle-drag-button:hover {
+    transform: scale(1.05);
+}
+
+/* Main Container */
+.family-chart-container {
+    width: 100%;
+    height: 700px;
+    position: relative;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    background-color: var(--color-background);
+}
+
+.family-chart-tree {
+    width: 100%;
+    height: 100%;
+}
+
+/* Control Panel */
+.family-chart-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    z-index: 100;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.controls-group {
+    display: flex;
+    gap: 8px;
+}
+
+.draggable-controls {
+    margin-left: auto;
+}
+
+.chart-control-button {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-md);
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.chart-control-button:hover {
+    background-color: var(--color-primary-dark);
+}
+
+.chart-control-button.active {
+    background-color: var(--color-success);
+    box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);
+}
+
+.chart-control-button.active:hover {
+    background-color: var(--color-success);
+    opacity: 0.9;
+}
+
+.chart-control-button.reset-positions-btn {
+    background-color: var(--color-warning);
+}
+
+.chart-control-button.reset-positions-btn:hover {
+    background-color: var(--color-warning);
+    opacity: 0.9;
+}
+
+/* Info Box */
+.family-chart-info {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 10;
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    pointer-events: none;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.family-chart-container:hover .family-chart-info {
+    opacity: 100;
+}
+
+/* Status States */
+.family-chart-empty,
+.family-chart-loading,
+.family-chart-error {
+    width: 100%;
+    height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-background);
+    border-radius: var(--border-radius-lg);
+    color: var(--color-text-secondary);
+    font-size: 18px;
+    border: 1px solid var(--color-border);
+}
+
+.family-chart-error {
+    color: var(--color-danger);
+    flex-direction: column;
+    gap: 16px;
+}
+
+.family-chart-loading {
+    color: var(--color-primary);
+}
+
+.family-chart-loading::after {
+    content: '';
+    width: 30px;
+    height: 30px;
+    margin-left: 12px;
+    border: 3px solid var(--color-border);
+    border-top: 3px solid var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* FAMILY CHART LIBRARY CUSTOM STYLES */
+/* Card Styling */
+#f3Canvas {
+    background: var(--color-background);
+}
+
+#f3Canvas .card {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+#f3Canvas .card:hover {
+    transform: scale(1.05);
+    z-index: 10;
+}
+
+#f3Canvas .card_cont.draggable:hover {
+    filter: brightness(1.1);
+}
+
+#f3Canvas .card_cont.dragging {
+    z-index: 1000;
+}
+
+#f3Canvas .card_cont.dragging .card-outline {
+    stroke-width: 3px;
+    stroke-dasharray: 5, 2;
+    animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -7;
+    }
+}
+
+#f3Canvas .card-male .card-outline {
+    stroke: var(--node-male-color);
+    stroke-width: 2px;
+}
+
+#f3Canvas .card-female .card-outline {
+    stroke: var(--node-female-color);
+    stroke-width: 2px;
+}
+
+#f3Canvas .card-main-outline {
+    stroke-width: 3px;
+    stroke-dasharray: 5, 2;
+}
+
+#f3Canvas .card-inner .card-body-rect {
+    fill: var(--color-surface);
+    stroke: var(--color-border);
+}
+
+#f3Canvas .card-male .card-body-rect {
+    fill: rgba(67, 97, 238, 0.1);
+}
+
+#f3Canvas .card-female .card-body-rect {
+    fill: rgba(247, 37, 133, 0.1);
+}
+
+/* Link Styling */
+#f3Canvas .link {
+    stroke: var(--color-text-secondary);
+    stroke-width: 1.5px;
+    stroke-opacity: 0.7;
+}
+
+#f3Canvas .link.f3-path-to-main {
+    stroke: var(--color-primary);
+    stroke-width: 2.5px;
+    stroke-opacity: 1;
+}
+
+/* Custom styling for person icons and images */
+#f3Canvas .person-icon {
+    fill: var(--color-text-secondary);
+}
+
+/* Make text more readable */
+#f3Canvas .card-text {
+    fill: var(--color-text);
+    font-family: var(--font-family);
+    font-size: 14px;
+}
+
+#f3Canvas .genderless-icon rect {
+    fill: #e2e8f0;
+}
+
+#f3Canvas .mini-tree {
+    color: var(--color-primary);
+    opacity: 0.7;
+}
+
+#f3Canvas .mini-tree:hover {
+    opacity: 1;
+}
+
+/* Card break link styling */
+#f3Canvas .card_break_link {
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+}
+
+#f3Canvas .card_break_link:hover {
+    opacity: 1;
+}
+
+#f3Canvas .card_break_link .link_upper,
+#f3Canvas .card_break_link .link_lower,
+#f3Canvas .card_break_link .link_particles {
+    fill: var(--color-primary);
+}
+
+/* Zoom controls */
+.main_svg .fit_screen_icon {
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.main_svg .fit_screen_icon:hover {
+    opacity: 1;
+}
+
+/* Form styling */
+.f3-form-cont {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    visibility: hidden;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.f3-form-cont.opened {
+    visibility: visible;
+    opacity: 1;
+}
+
+.f3-form {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Make sure cards in HTML view are properly styled */
+.cards_view .card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.cards_view .card-male {
+    border-left: 4px solid var(--node-male-color);
+}
+
+.cards_view .card-female {
+    border-left: 4px solid var(--node-female-color);
+}
+
+.cards_view .card-inner {
+    padding: 12px;
+}
+
+.cards_view .card-image-circle img,
+.cards_view .card-image-rect img {
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .family-chart-controls {
+        flex-wrap: wrap;
+        left: 10px;
+        right: 10px;
+        justify-content: center;
+    }
+
+    .controls-group {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .draggable-controls {
+        margin-left: 0;
+    }
+
+    .chart-control-button {
+        flex: 1;
+        min-width: max-content;
+        text-align: center;
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+
+    .drag-toggle-standalone {
+        margin-bottom: 10px;
+    }
+
+    .toggle-drag-button {
+        width: 100%;
+        padding: 8px 16px;
+    }
+}

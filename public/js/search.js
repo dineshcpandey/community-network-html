@@ -1,5 +1,6 @@
 // Search functionality
 import { searchByName, searchByLocation } from './api.js';
+import { chartData } from './app.js';
 
 // Elements
 const searchForm = document.getElementById('search-form');
@@ -73,15 +74,23 @@ async function handleSearch(e) {
             results = await searchByLocation(searchTerm);
         }
 
+        // Filter out people already in the chart
+        const existingIds = new Set(chartData.map(person => person.id));
+        const filteredResults = results.filter(person => !existingIds.has(person.id));
+
         // Display results
-        if (results.length === 0) {
-            showError(`No results found for ${searchType}: "${searchTerm}"`);
+        if (filteredResults.length === 0) {
+            if (results.length > 0 && results.length !== filteredResults.length) {
+                showError(`All ${results.length} results are already in your chart`);
+            } else {
+                showError(`No results found for ${searchType}: "${searchTerm}"`);
+            }
         } else {
-            resultsCount.textContent = `Found ${results.length} ${results.length === 1 ? 'person' : 'people'}`;
+            resultsCount.textContent = `Found ${filteredResults.length} ${filteredResults.length === 1 ? 'person' : 'people'}`;
             resultsCount.style.display = 'block';
 
             // Create person cards
-            results.forEach(person => {
+            filteredResults.forEach(person => {
                 const card = createPersonCard(person);
                 personCards.appendChild(card);
             });
@@ -140,53 +149,103 @@ function createPersonCard(person) {
     card.dataset.id = person.id;
 
     card.innerHTML = `
-    <div class="person-card-avatar">
-      <img 
-        src="${person.data.avatar || defaultAvatar}" 
-        alt="${fullName}" 
-        class="avatar ${person.data.gender === 'M' ? 'male' : person.data.gender === 'F' ? 'female' : 'neutral'}"
-      />
-    </div>
-    
-    <div class="person-card-info">
-      <h3 class="person-name">${fullName}</h3>
-      
-      <div class="person-details">
-        <div class="detail">
-          <span class="detail-label">Location:</span>
-          <span class="detail-value">${location}</span>
+        <div class="person-card-avatar">
+            <img 
+                src="${person.data.avatar || defaultAvatar}" 
+                alt="${fullName}" 
+                class="avatar ${person.data.gender === 'M' ? 'male' : person.data.gender === 'F' ? 'female' : 'neutral'}"
+            />
         </div>
         
-        <div class="detail">
-          <span class="detail-label">Gender:</span>
-          <span class="detail-value">${gender}</span>
+        <div class="person-card-info">
+            <h3 class="person-name">${fullName}</h3>
+            
+            <div class="person-details">
+                <div class="detail">
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">${location}</span>
+                </div>
+                
+                <div class="detail">
+                    <span class="detail-label">Gender:</span>
+                    <span class="detail-value">${gender}</span>
+                </div>
+                
+                ${person.data.birthday ? `
+                    <div class="detail">
+                        <span class="detail-label">Birthday:</span>
+                        <span class="detail-value">${birthday}</span>
+                    </div>
+                ` : ''}
+                
+                ${person.data.work ? `
+                    <div class="detail">
+                        <span class="detail-label">Work:</span>
+                        <span class="detail-value">${person.data.work}</span>
+                    </div>
+                ` : ''}
+            </div>
         </div>
         
-        ${person.data.birthday ? `
-          <div class="detail">
-            <span class="detail-label">Birthday:</span>
-            <span class="detail-value">${birthday}</span>
-          </div>
-        ` : ''}
-        
-        ${person.data.work ? `
-          <div class="detail">
-            <span class="detail-label">Work:</span>
-            <span class="detail-value">${person.data.work}</span>
-          </div>
-        ` : ''}
-      </div>
-    </div>
-    
-    <div class="person-card-action">
-      <button class="add-to-tree-btn">Add to Tree</button>
-    </div>
-  `;
+        <div class="person-card-action">
+            <button class="add-to-tree-btn">Add to Tree</button>
+        </div>
+    `;
 
-    // Add click handler
-    card.addEventListener('click', () => {
+    // Add person selection handler
+    function handlePersonSelection() {
         if (searchOptions.onPersonSelect) {
-            searchOptions.onPersonSelect(person);
+            // Add 'adding' class for styling
+            card.classList.add('adding');
+
+            // Replace card content with loading indicator
+            card.innerHTML = `
+                <div class="adding-indicator">
+                    <div class="adding-spinner"></div>
+                    <div>Adding to chart...</div>
+                </div>
+            `;
+
+            // Make sure person has a rels object to prevent chart errors
+            if (!person.rels) {
+                person.rels = { "spouses": [], "children": [] };
+            }
+
+            // Call the selection handler after a short delay
+            setTimeout(() => {
+                searchOptions.onPersonSelect(person);
+
+                // After adding person to the chart, hide all search results
+                setTimeout(() => {
+                    // Clear the search input
+                    if (searchInput) {
+                        searchInput.value = '';
+                    }
+
+                    // Hide the search results
+                    if (personCards) {
+                        personCards.innerHTML = '';
+                    }
+
+                    // Hide results count
+                    if (resultsCount) {
+                        resultsCount.style.display = 'none';
+                    }
+
+                    // Reset any error messages
+                    if (searchError) {
+                        searchError.style.display = 'none';
+                    }
+                }, 1000);
+            }, 500);
+        }
+    }
+
+    // Add click handler to the entire card
+    card.addEventListener('click', (e) => {
+        // Only respond to clicks outside buttons
+        if (!e.target.closest('button')) {
+            handlePersonSelection();
         }
     });
 
@@ -195,11 +254,48 @@ function createPersonCard(person) {
     if (addButton) {
         addButton.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent card click
-            if (searchOptions.onPersonSelect) {
-                searchOptions.onPersonSelect(person);
-            }
+            handlePersonSelection();
         });
     }
 
     return card;
+}
+
+/**
+ * Clear search results with smooth animation
+ */
+export function clearSearchResults() {
+    if (!personCards || !resultsCount || !searchError) return;
+
+    // Apply hiding classes for smooth transition
+    personCards.classList.add('hiding');
+    resultsCount.classList.add('hiding');
+
+    // Find the search component container
+    const searchComponent = document.querySelector('.search-component');
+    if (searchComponent) {
+        searchComponent.classList.add('results-hidden');
+    }
+
+    // Hide error message immediately
+    searchError.style.display = 'none';
+
+    // After transition completes, fully clear the content
+    setTimeout(() => {
+        // Clear the content
+        personCards.innerHTML = '';
+
+        // Reset display properties
+        resultsCount.style.display = 'none';
+
+        // Remove transition classes
+        personCards.classList.remove('hiding');
+        resultsCount.classList.remove('hiding');
+
+        // Clear the search input
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.focus(); // Optional: Return focus to search input
+        }
+    }, 500); // Match this timing with the CSS transition duration
 }

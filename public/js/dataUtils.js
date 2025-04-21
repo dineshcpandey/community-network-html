@@ -8,12 +8,7 @@
  */
 export function mergeNetworkData(chartData, networkData) {
     // Clone the chart data to avoid mutating the original
-    console.log("dataUtils.js mergeNetworkData chartData")
-    console.dir(chartData)
-
-    console.log("dataUtils.js mergeNetworkData networkData")
-    console.dir(networkData)
-
+    console.log("dataUtils.js: Merging network data", networkData.length, "items into chart data", chartData.length, "items");
 
     const updatedData = JSON.parse(JSON.stringify(chartData));
 
@@ -68,10 +63,11 @@ export function mergeNetworkData(chartData, networkData) {
         }
     });
 
-    console.log("dataUtils.js mergeNetworkData updatedData")
-    console.dir(updatedData)
-    // After merging, clean up any invalid references
-    return cleanInvalidReferences(updatedData);
+    // After merging, clean up any invalid references and ensure bidirectional relationships
+    const cleanedData = cleanInvalidReferences(updatedData);
+    console.log("dataUtils.js: After merging, cleaned data has", cleanedData.length, "items");
+
+    return cleanedData;
 }
 
 /**
@@ -80,6 +76,8 @@ export function mergeNetworkData(chartData, networkData) {
  * @returns {Array} - Cleaned data
  */
 export function cleanInvalidReferences(data) {
+    console.log("dataUtils.js: Cleaning invalid references from", data.length, "items");
+
     // Clone the data to avoid unexpected mutations
     const processedData = JSON.parse(JSON.stringify(data));
 
@@ -92,13 +90,13 @@ export function cleanInvalidReferences(data) {
 
         // Check and clean father reference
         if (person.rels.father && !existingIds.has(person.rels.father)) {
-            console.log(`Removing invalid father reference: ${person.rels.father} for person ${person.id}`);
+            console.log(`dataUtils.js: Removing invalid father reference: ${person.rels.father} for person ${person.id}`);
             delete person.rels.father;
         }
 
         // Check and clean mother reference
         if (person.rels.mother && !existingIds.has(person.rels.mother)) {
-            console.log(`Removing invalid mother reference: ${person.rels.mother} for person ${person.id}`);
+            console.log(`dataUtils.js: Removing invalid mother reference: ${person.rels.mother} for person ${person.id}`);
             delete person.rels.mother;
         }
 
@@ -107,7 +105,7 @@ export function cleanInvalidReferences(data) {
             person.rels.spouses = person.rels.spouses.filter(spouseId => {
                 const isValid = existingIds.has(spouseId);
                 if (!isValid) {
-                    console.log(`Removing invalid spouse reference: ${spouseId} for person ${person.id}`);
+                    console.log(`dataUtils.js: Removing invalid spouse reference: ${spouseId} for person ${person.id}`);
                 }
                 return isValid;
             });
@@ -122,21 +120,17 @@ export function cleanInvalidReferences(data) {
             person.rels.children = person.rels.children.filter(childId => {
                 const isValid = existingIds.has(childId);
                 if (!isValid) {
-                    console.log(`dataUtils.js --Removing invalid child reference: ${childId} for person ${person.id}`);
+                    console.log(`dataUtils.js: Removing invalid child reference: ${childId} for person ${person.id}`);
                 }
                 return isValid;
             });
             // If no children left, remove the property
             if (person.rels.children.length === 0) {
-
                 delete person.rels.children;
-
             }
         }
     });
 
-    console.log("dataUtils.js cleanInvalidReferences processedData")
-    console.dir(processedData)
     // Ensure bidirectional relationships
     return ensureBidirectionalRelationships(processedData);
 }
@@ -147,16 +141,21 @@ export function cleanInvalidReferences(data) {
  * @returns {Array} - Processed data with bidirectional relationships
  */
 export function ensureBidirectionalRelationships(data) {
+    console.log("dataUtils.js: Ensuring bidirectional relationships for", data.length, "items");
 
-    console.log("dataUtils.js ensureBidirectionalRelationships")
-    console.dir(data)
-    data.forEach(person => {
-        const rels = person.rels || {};
+    // Clone the data to avoid unexpected mutations
+    const processedData = JSON.parse(JSON.stringify(data));
+
+    processedData.forEach(person => {
+        if (!person.rels) {
+            person.rels = {};
+            return;
+        }
 
         // Handle parent-child relationships
-        if (rels.children && Array.isArray(rels.children)) {
-            rels.children.forEach(childId => {
-                const child = data.find(p => p.id === childId);
+        if (person.rels.children && Array.isArray(person.rels.children)) {
+            person.rels.children.forEach(childId => {
+                const child = processedData.find(p => p.id === childId);
                 if (child) {
                     child.rels = child.rels || {};
                     if (person.data.gender === "M" && child.rels.father !== person.id) {
@@ -169,8 +168,8 @@ export function ensureBidirectionalRelationships(data) {
         }
 
         // Handle father-child relationships
-        if (rels.father) {
-            const father = data.find(p => p.id === rels.father);
+        if (person.rels.father) {
+            const father = processedData.find(p => p.id === person.rels.father);
             if (father) {
                 father.rels = father.rels || {};
                 father.rels.children = father.rels.children || [];
@@ -181,8 +180,8 @@ export function ensureBidirectionalRelationships(data) {
         }
 
         // Handle mother-child relationships
-        if (rels.mother) {
-            const mother = data.find(p => p.id === rels.mother);
+        if (person.rels.mother) {
+            const mother = processedData.find(p => p.id === person.rels.mother);
             if (mother) {
                 mother.rels = mother.rels || {};
                 mother.rels.children = mother.rels.children || [];
@@ -193,9 +192,9 @@ export function ensureBidirectionalRelationships(data) {
         }
 
         // Handle spouse relationships
-        if (rels.spouses && Array.isArray(rels.spouses)) {
-            rels.spouses.forEach(spouseId => {
-                const spouse = data.find(p => p.id === spouseId);
+        if (person.rels.spouses && Array.isArray(person.rels.spouses)) {
+            person.rels.spouses.forEach(spouseId => {
+                const spouse = processedData.find(p => p.id === spouseId);
                 if (spouse) {
                     spouse.rels = spouse.rels || {};
                     spouse.rels.spouses = spouse.rels.spouses || [];
@@ -206,8 +205,6 @@ export function ensureBidirectionalRelationships(data) {
             });
         }
     });
-    console.log("dataUtils.js ensureBidirectionalRelationships After Processing")
-    console.dir(data)
 
-    return data;
+    return processedData;
 }
