@@ -1,7 +1,7 @@
 // Main app entry point
 import { initializeChart, updateChartData, getChartInstance } from './chart.js';
 import { setupSearch, clearSearchResults } from './search.js';
-import { setupEditForm } from './editForm.js';
+import { setupEditForm, openEditForm } from './editForm.js';
 import { fetchInitialData, fetchNetworkData } from './api.js';
 import { setupControlPanel } from './controlPanel.js';
 import { setupEventListeners } from './eventHandlers.js';
@@ -183,6 +183,28 @@ function handleAddPersonFromSearch(person) {
 
 // Toggle edit form visibility
 function toggleEditForm() {
+    // Debug check for selectedNode
+    console.log("toggleEditForm - selectedNode:", selectedNode ? selectedNode.id : "not selected");
+
+    // Check if a node is selected
+    if (!selectedNode) {
+        // Show a notification to the user
+        const notification = document.createElement('div');
+        notification.className = 'notification error';
+        notification.textContent = 'Please select a person to edit first';
+        document.body.appendChild(notification);
+
+        // Remove the notification after 3 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 3000);
+
+        console.warn('No node selected for editing');
+        return;
+    }
+
     isEditFormVisible = !isEditFormVisible;
 
     const editForm = document.getElementById('edit-form');
@@ -190,24 +212,46 @@ function toggleEditForm() {
 
     if (editForm && editBtn) {
         if (isEditFormVisible) {
-            editForm.classList.add('visible');
-            editBtn.classList.add('active');
-            editBtn.textContent = 'Close Edit Form';
+            // Initialize form with selected node
+            try {
+                // Use the specialized openEditForm function from editForm.js
+                openEditForm(selectedNode);
 
-            // Initialize form with selected node if available
-            if (selectedNode) {
-                const editFormTitle = document.getElementById('edit-form-title');
-                if (editFormTitle) {
-                    editFormTitle.textContent = `Edit: ${selectedNode.data["first name"] || ''} ${selectedNode.data["last name"] || ''}`;
-                }
+                editBtn.classList.add('active');
+                editBtn.textContent = 'Close Edit Form';
+            } catch (error) {
+                console.error("Error opening edit form:", error);
+
+                // Show error notification
+                const errorNotification = document.createElement('div');
+                errorNotification.className = 'notification error';
+                errorNotification.textContent = 'Error opening edit form';
+                document.body.appendChild(errorNotification);
+
+                // Remove the notification after 3 seconds
+                setTimeout(() => {
+                    if (errorNotification.parentNode) {
+                        errorNotification.parentNode.removeChild(errorNotification);
+                    }
+                }, 3000);
+
+                // Reset toggle state
+                isEditFormVisible = false;
             }
         } else {
             editForm.classList.remove('visible');
             editBtn.classList.remove('active');
             editBtn.textContent = 'Edit Person';
+
+            // Clear the form content when closing
+            const editFormContent = document.getElementById('edit-form-content');
+            if (editFormContent) {
+                editFormContent.innerHTML = '';
+            }
         }
     }
 }
+
 
 // Toggle highlight mode
 function toggleHighlightMode() {

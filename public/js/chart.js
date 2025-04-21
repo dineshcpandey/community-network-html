@@ -2,11 +2,14 @@
 
 import { mergeNetworkData, cleanInvalidReferences } from './dataUtils.js';
 import { chartData as appChartData, updateChartDataStore } from './app.js';
+// Import the updatePersonData function at the top of the file
+import { fetchNetworkData, updatePersonData } from './api.js';
 
 // Global chart instance
 let f3Chart = null;
 let f3Card = null;
 let f3EditTree = null;
+
 /**
  * Initialize the family chart
  * @param {Array} data - Chart data
@@ -66,12 +69,79 @@ export async function initializeChart(data, options = {}) {
             .setStyle('imageRect')
             .setOnHoverPathToMain();
 
-        // Set up edit tree
-        f3EditTree = f3Chart.editTree()
-            .fixed(true)
-            .setFields(["first name", "last name", "birthday", "avatar"])
-            .setEditFirst(true);
+        // Set up edit tree - THIS IS THE CRITICAL PART FOR THE EDIT FORM
+        // Get the edit-form-content container for the edit form
+        const editFormContent = document.getElementById('edit-form-content');
 
+        if (!editFormContent) {
+            console.error('Edit form content element not found');
+        }
+
+        // Initialize the edit tree with the correct container
+        f3EditTree = f3Chart.editTree();
+
+        // Configure the edit tree to use our specific container
+        f3EditTree.cont = editFormContent;
+
+        // Set up the fields we want to edit
+        f3EditTree.setFields([
+            "first name",
+            "last name",
+            "birthday",
+            "avatar",
+            "gender",
+            "location",
+            "work"
+        ])
+            .fixed(true)  // Keep the form fixed in position
+            .setEditFirst(true)  // Start in edit mode
+            .setOnChange(async (datum) => {
+                try {
+                    // When form is submitted, call the API to update the person data
+                    console.log("Form submitted for:", datum.id);
+
+                    // Show a status message in the form
+                    const statusMsg = document.createElement('div');
+                    statusMsg.className = 'form-status-message';
+                    statusMsg.textContent = 'Saving changes...';
+                    editFormContent.appendChild(statusMsg);
+
+                    // Call the API to update the person data
+                    await updatePersonData(datum.id, datum);
+
+                    // Update the status message
+                    statusMsg.className = 'form-status-message success';
+                    statusMsg.textContent = 'Changes saved successfully!';
+
+                    // Remove the status message after a delay
+                    setTimeout(() => {
+                        if (statusMsg.parentNode) {
+                            statusMsg.parentNode.removeChild(statusMsg);
+                        }
+                    }, 3000);
+
+                } catch (error) {
+                    console.error('Error updating person data:', error);
+
+                    // Show error message
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'form-status-message error';
+                    errorMsg.textContent = `Error saving changes: ${error.message}`;
+                    editFormContent.appendChild(errorMsg);
+
+                    // Remove the error message after a delay
+                    setTimeout(() => {
+                        if (errorMsg.parentNode) {
+                            errorMsg.parentNode.removeChild(errorMsg);
+                        }
+                    }, 5000);
+                }
+            });
+
+        // Initialize the edit tree component
+        f3EditTree.init();
+
+        // Set up editing mode
         f3EditTree.setEdit();
 
         // Set up card click handler
@@ -136,26 +206,19 @@ export async function updateChartData(networkData) {
 }
 
 /**
- * Open edit tree for a specific node
- * @param {string} nodeId - The ID of the node to edit
+ * Open edit tree for a specific person
+ * @param {Object} person - The person data to edit
  */
-export function openEditTree(nodeId) {
+export function openEditTree(person) {
     if (!f3Chart || !f3EditTree) {
         console.error('Chart or EditTree not initialized');
         return;
     }
 
     try {
-        // Find node data from the app's chart data store
-        const nodeDatum = appChartData.find(d => d.id === nodeId);
-        if (!nodeDatum) {
-            console.error('Node not found:', nodeId);
-            return;
-        }
-
-        // Open edit form for this node
-        f3EditTree.open({ data: nodeDatum });
-        console.log('Edit tree opened for node:', nodeId);
+        // Open edit form for this person
+        f3EditTree.open({ data: person });
+        console.log('Edit tree opened for person:', person.id);
     } catch (error) {
         console.error('Error opening edit tree:', error);
     }
@@ -182,4 +245,4 @@ export function resetChart() {
     f3Chart = null;
     f3Card = null;
     f3EditTree = null;
-}   
+}

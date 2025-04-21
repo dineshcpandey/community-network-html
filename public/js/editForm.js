@@ -1,5 +1,5 @@
 // Edit Form functionality
-import { getChartInstance } from './chart.js';
+import { getChartInstance, openEditTree } from './chart.js';
 
 // Elements
 const editForm = document.getElementById('edit-form');
@@ -38,14 +38,6 @@ export function openEditForm(person) {
     }
 
     try {
-        // Get chart instance
-        const chartInstance = getChartInstance();
-
-        if (!chartInstance.editTree) {
-            console.error('Edit tree not available');
-            return;
-        }
-
         // Make form visible
         editForm.classList.add('visible');
 
@@ -55,9 +47,8 @@ export function openEditForm(person) {
             editFormTitle.textContent = `Edit: ${person['first name'] || ''} ${person['last name'] || ''}`;
         }
 
-        // Open edit tree form for this person
-        chartInstance.editTree.open({ data: person });
-
+        // Open edit tree form for this person using direct function
+        openEditTree(person);
         console.log('Edit form opened for person:', person.id);
     } catch (error) {
         console.error('Error opening edit form:', error);
