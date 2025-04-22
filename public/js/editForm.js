@@ -32,6 +32,7 @@ export function setupEditForm(options = {}) {
  * @param {Object} person - Person data
  */
 export function openEditForm(person) {
+    console.log("editForm.js openEditForm ", person)
     if (!editForm || !editFormContent) {
         console.error('Edit form elements not found');
         return;
@@ -40,7 +41,7 @@ export function openEditForm(person) {
     try {
         // Make form visible
         editForm.classList.add('visible');
-
+        console.log("Inside editForm.js ", person)
         // Set title
         const editFormTitle = document.getElementById('edit-form-title');
         if (editFormTitle && person) {
