@@ -212,6 +212,7 @@ function toggleEditForm() {
     const editBtn = document.getElementById('edit-button');
 
     if (editForm && editBtn) {
+        console.log("Now Tryint to edit ", selectedNode)
         if (isEditFormVisible) {
             // Initialize form with selected node
             try {

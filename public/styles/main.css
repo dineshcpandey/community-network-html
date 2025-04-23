@@ -817,12 +817,14 @@ body {
 
 /* Update Success Summary */
 .update-success-summary {
-    margin-top: 20px;
-    padding: 15px;
+    margin: 20px auto;
+    padding: 20px;
     background-color: rgba(46, 204, 113, 0.1);
     border: 1px solid #2ecc71;
     border-radius: 4px;
-    animation: fadeIn 0.3s ease;
+    animation: fadeIn 0.5s ease;
+    max-width: 90%;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .update-success-summary h3 {

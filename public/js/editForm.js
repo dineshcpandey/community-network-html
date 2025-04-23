@@ -32,24 +32,35 @@ export function setupEditForm(options = {}) {
  * @param {Object} person - Person data
  */
 export function openEditForm(person) {
-    console.log("editForm.js openEditForm ", person)
+    console.log("editForm.js openEditForm ", person);
+
     if (!editForm || !editFormContent) {
         console.error('Edit form elements not found');
         return;
     }
 
     try {
+        // ⚠️ IMPORTANT: Clear the edit form content completely first
+        editFormContent.innerHTML = '';
+        console.log("Inside editForm.js ", person);
+
         // Make form visible
         editForm.classList.add('visible');
-        console.log("Inside editForm.js ", person)
+
         // Set title
         const editFormTitle = document.getElementById('edit-form-title');
         if (editFormTitle && person) {
-            editFormTitle.textContent = `Edit: ${person['first name'] || ''} ${person['last name'] || ''}`;
+            console.log("Got the edit-form-title ", editFormTitle);
+            editFormTitle.textContent = `Edit: ${person.data["first name"] || ''} ${person.data["last name"] || ''}`;
         }
 
-        // Open edit tree form for this person using direct function
-        openEditTree(person);
+        // Wait a brief moment before opening the edit tree - this helps with timing issues
+        console.log("Trying to open openEditTree", person);
+        setTimeout(() => {
+            // Open edit tree form for this person using direct function
+            openEditTree(person);
+        }, 50);
+
         console.log('Edit form opened for person:', person.id);
     } catch (error) {
         console.error('Error opening edit form:', error);
@@ -64,8 +75,15 @@ export function closeEditForm() {
         editForm.classList.remove('visible');
     }
 
+    // Clear the form content when closing
+    if (editFormContent) {
+        editFormContent.innerHTML = '';
+    }
+
     // Clear the current edit person reference
     clearCurrentEditPerson();
+
+    console.log('Edit form closed and cleared');
 }
 
 /**
