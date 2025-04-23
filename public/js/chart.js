@@ -3,6 +3,8 @@
 import { mergeNetworkData, cleanInvalidReferences } from './dataUtils.js';
 import { chartData as appChartData, updateChartDataStore } from './app.js';
 import { fetchNetworkData, updatePersonData } from './api.js';
+import { handleNewRelativeClick, isCurrentlyAddingRelative, resetAddRelativeState } from './addRelative.js';
+
 
 // Global chart instance
 let f3Chart = null;
@@ -258,8 +260,16 @@ export async function initializeChart(data, options = {}) {
         f3Card.setOnCardClick((e, d) => {
             console.log('Card clicked - ID:', d.data.id);
 
+            // Check if this is a new relative card
+            if (d.data._new_rel_data) {
+                // This is a new relative card, handle it with our custom implementation
+                const mainNode = f3Chart.getMainDatum();
+                handleNewRelativeClick(d.data, mainNode);
+                return; // Prevent default handling
+            }
+
             // Prevent default click behavior if adding relative
-            if (f3EditTree.isAddingRelative()) return;
+            if (f3EditTree.isAddingRelative() || isCurrentlyAddingRelative()) return;
 
             // Notify caller of node selection
             if (onNodeSelect) {
@@ -269,6 +279,7 @@ export async function initializeChart(data, options = {}) {
             // Default behavior (change main node)
             f3Card.onCardClickDefault(e, d);
         });
+
 
         // Update tree initially
         f3Chart.updateTree({ initial: true });

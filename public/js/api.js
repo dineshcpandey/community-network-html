@@ -146,3 +146,35 @@ function formatPersonDataForApi(personData) {
         }
     };
 }
+
+/**
+ * Create a new person with relationship data
+ * @param {Object} personData - The person data to create
+ * @returns {Promise<Object>} The created person data
+ */
+export async function createNewPerson(personData) {
+    try {
+        // Format the data according to the API requirements
+        const apiPayload = formatPersonDataForApi(personData);
+
+        // Make the POST request to create the new person
+        const response = await fetch(`${API_BASE_URL}/add`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(apiPayload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Create person API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log(`Created new person:`, data);
+        return data;
+    } catch (error) {
+        console.error('Error creating new person:', error);
+        throw error;
+    }
+}

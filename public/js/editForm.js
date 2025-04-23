@@ -83,6 +83,9 @@ export function closeEditForm() {
     // Clear the current edit person reference
     clearCurrentEditPerson();
 
+    // Also reset the add relative state
+    resetAddRelativeState();
+
     console.log('Edit form closed and cleared');
 }
 
