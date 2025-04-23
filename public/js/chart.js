@@ -2,7 +2,6 @@
 
 import { mergeNetworkData, cleanInvalidReferences } from './dataUtils.js';
 import { chartData as appChartData, updateChartDataStore } from './app.js';
-// Import the updatePersonData function at the top of the file
 import { fetchNetworkData, updatePersonData } from './api.js';
 
 // Global chart instance
@@ -11,6 +10,123 @@ let f3Card = null;
 let f3EditTree = null;
 // Track the currently edited person
 let currentEditPerson = null;
+
+/**
+ * Handle form submission for person edits
+ * @param {Object} currentEditPerson - The person being edited
+ * @returns {Promise} - Promise resolving to the updated person
+ */
+function handleFormSubmission(currentEditPerson) {
+    try {
+        // Get the edit form elements
+        const editForm = document.getElementById('edit-form');
+        const editFormContent = document.getElementById('edit-form-content');
+
+        if (!editFormContent) {
+            throw new Error("Edit form content element not found");
+        }
+
+        // Show a status message in the form
+        const statusMsg = document.createElement('div');
+        statusMsg.className = 'form-status-message';
+        statusMsg.textContent = 'Saving changes...';
+        editFormContent.appendChild(statusMsg);
+
+        // Call the API to update the person data
+        return updatePersonData(currentEditPerson.id, currentEditPerson)
+            .then(() => {
+                // Update the status message
+                statusMsg.className = 'form-status-message success';
+                statusMsg.textContent = 'Changes saved successfully!';
+
+                // Clear any previously shown success summaries
+                const existingSummaries = editFormContent.querySelectorAll('.update-success-summary');
+                existingSummaries.forEach(summary => summary.remove());
+
+                // Hide the form fields but keep the container visible
+
+
+                // const formContainer = document.querySelector('.f3-form-cont');
+                // console.log("Getting the formContainer ", formContainer)
+                // if (formContainer) {
+                //     formContainer.className = ''
+                //     formContainer.style.display = 'none';
+                //     console.log("set the formcontainer to hidden")
+                // }
+
+
+                const familyForm = document.getElementById('familyForm');
+                console.log("Got the familyForm ", familyForm)
+                if (familyForm) {
+                    // To be fixed I don't want .parentNode.parentNode
+                    familyForm.parentNode.parentNode.style.display = 'none';
+                }
+
+                // Create a success summary with data highlights
+                const successSummary = document.createElement('div');
+                successSummary.className = 'update-success-summary';
+
+                // Format the updated data for display
+                const firstName = currentEditPerson.data["first name"] || '';
+                const lastName = currentEditPerson.data["last name"] || '';
+                const location = currentEditPerson.data.location || 'Not specified';
+                const gender = currentEditPerson.data.gender === 'M' ? 'Male' :
+                    currentEditPerson.data.gender === 'F' ? 'Female' : 'Not specified';
+
+                successSummary.innerHTML = `
+                    <h3>Updated Information</h3>
+                    <div class="summary-item">
+                        <span class="summary-label">Name:</span>
+                        <span class="summary-value">${firstName} ${lastName}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Gender:</span>
+                        <span class="summary-value">${gender}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Location:</span>
+                        <span class="summary-value">${location}</span>
+                    </div>
+                    ${currentEditPerson.data.birthday ? `
+                        <div class="summary-item">
+                            <span class="summary-label">Birthday:</span>
+                            <span class="summary-value">${currentEditPerson.data.birthday}</span>
+                        </div>
+                    ` : ''}
+                `;
+
+                // Add a close button
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'close-edit-form-btn';
+                closeBtn.textContent = 'Close';
+                closeBtn.addEventListener('click', () => {
+                    // Find and click the existing close button to reuse its functionality
+                    const existingCloseBtn = document.getElementById('close-edit-form');
+                    if (existingCloseBtn) {
+                        existingCloseBtn.click();
+                    }
+                });
+
+                successSummary.appendChild(closeBtn);
+
+                // Add to the form content
+                editFormContent.appendChild(successSummary);
+
+                // Remove the status message after a delay - but keep the summary
+                setTimeout(() => {
+                    if (statusMsg.parentNode) {
+                        statusMsg.parentNode.removeChild(statusMsg);
+                    }
+                }, 3000);
+
+                console.log('Form updated with success summary');
+                return currentEditPerson;
+            });
+    } catch (error) {
+        console.error('Error handling form submission:', error);
+        throw error;
+    }
+}
 
 /**
  * Initialize the family chart
@@ -71,10 +187,10 @@ export async function initializeChart(data, options = {}) {
             .setStyle('imageRect')
             .setOnHoverPathToMain();
 
-        // Set up edit tree - THIS IS THE CRITICAL PART FOR THE EDIT FORM
+        // Set up edit tree
         // Get the edit-form-content container for the edit form
         const editFormContent = document.getElementById('edit-form-content');
-        console.log("editFormContent ", editFormContent)
+        console.log("editFormContent ", editFormContent);
 
         if (!editFormContent) {
             console.error('Edit form content element not found');
@@ -108,102 +224,27 @@ export async function initializeChart(data, options = {}) {
 
                     console.log("Form submitted for:", currentEditPerson.id);
 
-                    // Show a status message in the form
-                    const statusMsg = document.createElement('div');
-                    statusMsg.className = 'form-status-message';
-                    statusMsg.textContent = 'Saving changes...';
-                    editFormContent.appendChild(statusMsg);
-
-                    // Call the API to update the person data
-                    await updatePersonData(currentEditPerson.id, currentEditPerson);
-
-                    // Update the status message
-                    statusMsg.className = 'form-status-message success';
-                    statusMsg.textContent = 'Changes saved successfully!';
-                    console.log(" Chart.js after await for updatePersonData ", currentEditPerson.id)
-
-                    // Hide the form fields
-                    console.log("Trying to hide the edit form")
-                    const tohideEditForm = document.getElementById('familyForm');
-                    console.log("got the container to Hide ", tohideEditForm)
-                    tohideEditForm.style.display = 'none'
-                    // Clear any previously shown success summaries
-                    const existingSummaries = editFormContent.querySelectorAll('.update-success-summary');
-                    existingSummaries.forEach(summary => summary.remove());
-
-
-                    // Create a success summary with data highlights
-                    const successSummary = document.createElement('div');
-                    successSummary.className = 'update-success-summary';
-
-                    // Format the updated data for display
-                    const firstName = currentEditPerson.data["first name"] || '';
-                    const lastName = currentEditPerson.data["last name"] || '';
-                    const location = currentEditPerson.data.location || 'Not specified';
-                    const gender = currentEditPerson.data.gender === 'M' ? 'Male' :
-                        currentEditPerson.data.gender === 'F' ? 'Female' : 'Not specified';
-
-                    successSummary.innerHTML = `
-            <h3>Updated Information</h3>
-            <div class="summary-item">
-                <span class="summary-label">Name:</span>
-                <span class="summary-value">${firstName} ${lastName}</span>
-            </div>
-            <div class="summary-item">
-                <span class="summary-label">Gender:</span>
-                <span class="summary-value">${gender}</span>
-            </div>
-            <div class="summary-item">
-                <span class="summary-label">Location:</span>
-                <span class="summary-value">${location}</span>
-            </div>
-            ${currentEditPerson.data.birthday ? `
-                <div class="summary-item">
-                    <span class="summary-label">Birthday:</span>
-                    <span class="summary-value">${currentEditPerson.data.birthday}</span>
-                </div>
-            ` : ''}
-        `;
-
-                    // Add a close button
-                    const closeBtn = document.createElement('button');
-                    closeBtn.className = 'close-edit-form-btn';
-                    closeBtn.textContent = 'Close';
-                    closeBtn.addEventListener('click', () => {
-                        // Find and click the existing close button to reuse its functionality
-                        const existingCloseBtn = document.getElementById('close-edit-form');
-                        if (existingCloseBtn) {
-                            existingCloseBtn.click();
-                        }
-                    });
-                    console.log("tryint to add successsummary div")
-                    successSummary.appendChild(closeBtn);
-
-                    // Add to the form
-                    editFormContent.appendChild(successSummary);
-
-                    // Remove the status message after a delay - but keep the summary
-                    setTimeout(() => {
-                        if (statusMsg.parentNode) {
-                            statusMsg.parentNode.removeChild(statusMsg);
-                        }
-                    }, 3000);
+                    // Use the shared form submission handler
+                    await handleFormSubmission(currentEditPerson);
 
                 } catch (error) {
                     console.error('Error updating person data:', error);
 
-                    // Show error message
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = 'form-status-message error';
-                    errorMsg.textContent = `Error saving changes: ${error.message}`;
-                    editFormContent.appendChild(errorMsg);
+                    // Show error message in the edit form content
+                    const editFormContent = document.getElementById('edit-form-content');
+                    if (editFormContent) {
+                        const errorMsg = document.createElement('div');
+                        errorMsg.className = 'form-status-message error';
+                        errorMsg.textContent = `Error saving changes: ${error.message}`;
+                        editFormContent.appendChild(errorMsg);
 
-                    // Remove the error message after a delay
-                    setTimeout(() => {
-                        if (errorMsg.parentNode) {
-                            errorMsg.parentNode.removeChild(errorMsg);
-                        }
-                    }, 5000);
+                        // Remove the error message after a delay
+                        setTimeout(() => {
+                            if (errorMsg.parentNode) {
+                                errorMsg.parentNode.removeChild(errorMsg);
+                            }
+                        }, 5000);
+                    }
                 }
             });
 
@@ -274,7 +315,6 @@ export async function updateChartData(networkData) {
     }
 }
 
-
 /**
  * Open edit tree for a specific person
  * @param {Object} person - The person data to edit
@@ -334,103 +374,27 @@ export function openEditTree(person) {
 
                     console.log("Form submitted for:", currentEditPerson.id);
 
-                    // Show a status message in the form
-                    const statusMsg = document.createElement('div');
-                    statusMsg.className = 'form-status-message';
-                    statusMsg.textContent = 'Saving changes...';
-                    editFormContent.appendChild(statusMsg);
-
-                    // Call the API to update the person data
-                    await updatePersonData(currentEditPerson.id, currentEditPerson);
-
-                    // Update the status message
-                    statusMsg.className = 'form-status-message success';
-                    statusMsg.textContent = 'Changes saved successfully!';
-
-                    console.log(" Chart.js after await for updatePersonData ", currentEditPerson.id)
-
-                    // Hide the form fields
-                    console.log("Trying to hide the edit form")
-                    const tohideEditForm = document.getElementById('familyForm');
-                    //d3.select(this.cont).select('.f3-form-cont').remove();
-                    console.log("got the container to Hide ", tohideEditForm)
-                    tohideEditForm.parentNode.parentNode.style.display = 'none'
-                    // Clear any previously shown success summaries
-                    const existingSummaries = editFormContent.querySelectorAll('.update-success-summary');
-                    existingSummaries.forEach(summary => summary.remove());
-
-                    // Create a success summary with data highlights
-                    const successSummary = document.createElement('div');
-                    successSummary.className = 'update-success-summary';
-
-                    // Format the updated data for display
-                    const firstName = currentEditPerson.data["first name"] || '';
-                    const lastName = currentEditPerson.data["last name"] || '';
-                    const location = currentEditPerson.data.location || 'Not specified';
-                    const gender = currentEditPerson.data.gender === 'M' ? 'Male' :
-                        currentEditPerson.data.gender === 'F' ? 'Female' : 'Not specified';
-
-                    successSummary.innerHTML = `
-                    <h3>Updated Information</h3>
-                    <div class="summary-item">
-                        <span class="summary-label">Name:</span>
-                        <span class="summary-value">${firstName} ${lastName}</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Gender:</span>
-                        <span class="summary-value">${gender}</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Location:</span>
-                        <span class="summary-value">${location}</span>
-                    </div>
-                    ${currentEditPerson.data.birthday ? `
-                        <div class="summary-item">
-                            <span class="summary-label">Birthday:</span>
-                            <span class="summary-value">${currentEditPerson.data.birthday}</span>
-                        </div>
-                    ` : ''}
-                `;
-
-                    // Add a close button
-                    const closeBtn = document.createElement('button');
-                    closeBtn.className = 'close-edit-form-btn';
-                    closeBtn.textContent = 'Close';
-                    closeBtn.addEventListener('click', () => {
-                        // Find and click the existing close button to reuse its functionality
-                        const existingCloseBtn = document.getElementById('close-edit-form');
-                        if (existingCloseBtn) {
-                            existingCloseBtn.click();
-                        }
-                    });
-
-                    successSummary.appendChild(closeBtn);
-
-                    // Add to the form
-                    editFormContent.appendChild(successSummary);
-
-                    // Remove the status message after a delay - but keep the summary
-                    setTimeout(() => {
-                        if (statusMsg.parentNode) {
-                            statusMsg.parentNode.removeChild(statusMsg);
-                        }
-                    }, 3000);
+                    // Use the shared form submission handler
+                    await handleFormSubmission(currentEditPerson);
 
                 } catch (error) {
                     console.error('Error updating person data:', error);
 
                     // Show error message
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = 'form-status-message error';
-                    errorMsg.textContent = `Error saving changes: ${error.message}`;
-                    editFormContent.appendChild(errorMsg);
+                    const editFormContent = document.getElementById('edit-form-content');
+                    if (editFormContent) {
+                        const errorMsg = document.createElement('div');
+                        errorMsg.className = 'form-status-message error';
+                        errorMsg.textContent = `Error saving changes: ${error.message}`;
+                        editFormContent.appendChild(errorMsg);
 
-                    // Remove the error message after a delay
-                    setTimeout(() => {
-                        if (errorMsg.parentNode) {
-                            errorMsg.parentNode.removeChild(errorMsg);
-                        }
-                    }, 5000);
+                        // Remove the error message after a delay
+                        setTimeout(() => {
+                            if (errorMsg.parentNode) {
+                                errorMsg.parentNode.removeChild(errorMsg);
+                            }
+                        }, 5000);
+                    }
                 }
             });
 
@@ -453,13 +417,11 @@ export function openEditTree(person) {
     }
 }
 
-
-
 /**
  * Clear current edit person reference
  */
 export function clearCurrentEditPerson() {
-    // currentEditPerson = null;
+    currentEditPerson = null;
     console.log('Cleared current edit person reference');
 }
 
