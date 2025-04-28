@@ -1,5 +1,6 @@
 // Edit Form functionality
 import { getChartInstance, openEditTree, clearCurrentEditPerson } from './chart.js';
+import { resetAddRelativeState } from './addRelative.js'
 
 // Elements
 const editForm = document.getElementById('edit-form');

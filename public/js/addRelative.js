@@ -23,12 +23,15 @@ export function initAddRelative(options = {}) {
  * @param {Object} originalPerson - The original person being edited
  */
 export function handleNewRelativeClick(newRelativeData, originalPerson) {
-    console.log('Add relative clicked:', newRelativeData._new_rel_data.rel_type);
+    console.log('Add relative clicked:', newRelativeData._new_rel_data);
 
     // Store references for later use
     currentNewRelativeData = newRelativeData;
     currentOriginalPerson = originalPerson;
     isAddingRelative = true;
+
+    // The relationship data is already established by the library
+    // We just need to use it when creating the new person
 
     // Get the relationship type
     const relType = newRelativeData._new_rel_data.rel_type;
@@ -219,6 +222,7 @@ function createAddRelativeForm(container, formData, relType) {
     container.appendChild(form);
 }
 
+
 /**
  * Handle submission of the add relative form
  * @param {Event} e - The submit event
@@ -258,8 +262,9 @@ async function handleAddRelativeSubmit(e) {
             "nativePlace": ""
         };
 
-        // Create the relationships based on relation type (using temporary ID)
-        const tempRels = createRelationshipsData(relType, currentOriginalPerson);
+        // Important: Use the relationship data that's already in the new relative placeholder
+        // This already includes the correct parental relationships from the context
+        const rels = currentNewRelativeData.rels || {};
 
         // Create the new person object
         const newPersonData = {
@@ -267,16 +272,17 @@ async function handleAddRelativeSubmit(e) {
             birthdate: formData.birthday,
             gender: formData.gender,
             currentlocation: formData.location,
-            fatherid: tempRels.father || null,
-            motherid: tempRels.mother || null,
-            spouseid: tempRels.spouses ? tempRels.spouses[0] : null,
+            // Use the relationship data from the placeholder
+            fatherid: rels.father || null,
+            motherid: rels.mother || null,
+            spouseid: rels.spouses && rels.spouses.length > 0 ? rels.spouses[0] : null,
             worksat: formData.work,
             nativeplace: formData.nativePlace,
             phone: null,
             mail_id: null,
             living: "Y",
             data: formData,
-            rels: tempRels
+            rels: rels
         };
 
         // Call API to create new person
@@ -291,36 +297,11 @@ async function handleAddRelativeSubmit(e) {
         const newPerson = {
             id: permanentId,
             data: formData,
-            rels: {} // We'll recreate the relationships with the permanent ID
+            rels: rels // Keep the relationship data from the placeholder
         };
 
-        // Recreate relationships using the permanent ID
-        switch (relType) {
-            case 'father':
-                newPerson.rels.children = [currentOriginalPerson.id];
-                break;
-            case 'mother':
-                newPerson.rels.children = [currentOriginalPerson.id];
-                break;
-            case 'spouse':
-                newPerson.rels.spouses = [currentOriginalPerson.id];
-                break;
-            case 'son':
-            case 'daughter':
-                if (currentOriginalPerson.data.gender === 'M') {
-                    newPerson.rels.father = currentOriginalPerson.id;
-                } else {
-                    newPerson.rels.mother = currentOriginalPerson.id;
-                }
-                break;
-        }
-
-        // Now update the original person's relationships to use the permanent ID
-        await updateOriginalPersonRelationshipsWithPermanentId(
-            currentOriginalPerson,
-            permanentId,
-            relType
-        );
+        // Now update the relationships of all connected people (parents, spouse, etc.)
+        await updateConnectedPeopleRelationships(permanentId, rels);
 
         // Update chart data with the permanent ID
         await updateChartWithNewRelative(newPerson);
@@ -356,6 +337,59 @@ async function handleAddRelativeSubmit(e) {
     }
 }
 
+
+/**
+ * Update relationships of connected people
+ * @param {string} newPersonId - New person ID
+ * @param {Object} relationships - Relationship data from placeholder
+ */
+async function updateConnectedPeopleRelationships(newPersonId, relationships) {
+    const updatePromises = [];
+
+    // Update father if exists in relationships
+    if (relationships.father) {
+        const father = chartData.find(p => p.id === relationships.father);
+        if (father) {
+            const fatherUpdate = updatePersonRelationship(
+                father,
+                'children',
+                newPersonId
+            );
+            updatePromises.push(fatherUpdate);
+        }
+    }
+
+    // Update mother if exists in relationships
+    if (relationships.mother) {
+        const mother = chartData.find(p => p.id === relationships.mother);
+        if (mother) {
+            const motherUpdate = updatePersonRelationship(
+                mother,
+                'children',
+                newPersonId
+            );
+            updatePromises.push(motherUpdate);
+        }
+    }
+
+    // Update spouses if exists in relationships
+    if (relationships.spouses && relationships.spouses.length > 0) {
+        for (const spouseId of relationships.spouses) {
+            const spouse = chartData.find(p => p.id === spouseId);
+            if (spouse) {
+                const spouseUpdate = updatePersonRelationship(
+                    spouse,
+                    'spouses',
+                    newPersonId
+                );
+                updatePromises.push(spouseUpdate);
+            }
+        }
+    }
+
+    // Wait for all updates to complete
+    await Promise.all(updatePromises);
+}
 
 /**
  * Update the original person's relationships
@@ -473,6 +507,52 @@ async function updateChartWithNewRelative(newPerson) {
 
     // Update the chart
     await updateChartData([newPerson]);
+}
+
+
+
+/**
+ * Update a specific relationship for a person
+ * @param {Object} person - Person to update
+ * @param {string} relType - Relationship type
+ * @param {string} newPersonId - New person ID
+ * @param {boolean} isSingleValue - Whether this is a single value (not array)
+ */
+async function updatePersonRelationship(person, relType, newPersonId, isSingleValue = false) {
+    // Clone the person to avoid mutations
+    const updatedPerson = JSON.parse(JSON.stringify(person));
+
+    if (isSingleValue) {
+        // For single-value relationships (father, mother)
+        updatedPerson.rels[relType] = newPersonId;
+    } else {
+        // For array relationships (children, spouses)
+        if (!updatedPerson.rels[relType]) {
+            updatedPerson.rels[relType] = [];
+        }
+
+        if (!updatedPerson.rels[relType].includes(newPersonId)) {
+            updatedPerson.rels[relType].push(newPersonId);
+        }
+    }
+
+    // Update person in the backend
+    return updatePersonData(person.id, updatedPerson);
+}
+
+/**
+ * Debounce function for search input
+ * @param {Function} func - Function to debounce
+ * @param {number} delay - Delay in milliseconds
+ */
+function debounce(func, delay) {
+    let timeoutId;
+    return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            func.apply(this, args);
+        }, delay);
+    };
 }
 
 /**
