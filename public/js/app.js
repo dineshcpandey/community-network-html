@@ -5,6 +5,7 @@ import { setupEditForm, openEditForm } from './editForm.js';
 import { fetchInitialData, fetchNetworkData } from './api.js';
 import { setupControlPanel } from './controlPanel.js';
 import { setupEventListeners } from './eventHandlers.js';
+import { showAddPersonForm } from './addPerson.js';
 
 
 // Global state
@@ -416,42 +417,48 @@ function clearChartData() {
 /**
  * Create a new person and add them to the chart
  */
+
 function addNewPerson() {
-    // Create a new person with a unique ID
-    const newPersonId = "person-" + Date.now();
-
-    // Get basic information via prompts
-    const firstName = prompt("Enter first name:", "New");
-    if (firstName === null) return; // User canceled
-
-    const lastName = prompt("Enter last name:", "Person");
-    if (lastName === null) return; // User canceled
-
-    const gender = confirm("Is this person male? (OK for male, Cancel for female)") ? "M" : "F";
-
-    // Create the person object
-    const newPerson = {
-        id: newPersonId,
-        data: {
-            "first name": firstName || "New",
-            "last name": lastName || "Person",
-            "gender": gender,
-            "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg"
-        },
-        rels: {}
-    };
-
-    // Add to chart data
-    chartData.push(newPerson);
-
-    // Update the chart
-    updateChartData([newPerson]);
-
-    // Select the newly added person
-    handleNodeSelect(newPerson);
-
-    updateDataSourceIndicator(`Added new person: ${firstName} ${lastName}`);
+    // Show the new add person modal instead of using prompts
+    showAddPersonForm();
 }
+
+// function addNewPerson() {
+//     // Create a new person with a unique ID
+//     const newPersonId = "person-" + Date.now();
+
+//     // Get basic information via prompts
+//     const firstName = prompt("Enter first name:", "New");
+//     if (firstName === null) return; // User canceled
+
+//     const lastName = prompt("Enter last name:", "Person");
+//     if (lastName === null) return; // User canceled
+
+//     const gender = confirm("Is this person male? (OK for male, Cancel for female)") ? "M" : "F";
+
+//     // Create the person object
+//     const newPerson = {
+//         id: newPersonId,
+//         data: {
+//             "first name": firstName || "New",
+//             "last name": lastName || "Person",
+//             "gender": gender,
+//             "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg"
+//         },
+//         rels: {}
+//     };
+
+//     // Add to chart data
+//     chartData.push(newPerson);
+
+//     // Update the chart
+//     updateChartData([newPerson]);
+
+//     // Select the newly added person
+//     handleNodeSelect(newPerson);
+
+//     updateDataSourceIndicator(`Added new person: ${firstName} ${lastName}`);
+// }
 
 // Download chart data as JSON
 function downloadChartData() {
