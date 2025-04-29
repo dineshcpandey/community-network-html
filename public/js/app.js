@@ -8,6 +8,7 @@ import { setupEventListeners } from './eventHandlers.js';
 import { showAddPersonForm } from './addPerson.js';
 
 
+
 // Global state
 export let chartData = [];
 let selectedNode = null;
@@ -83,99 +84,136 @@ async function initApp() {
  * Handle node selection
  * @param {Object} node - The selected node
  */
+
 async function handleNodeSelect(node) {
     selectedNode = node;
 
     // Update selected node info in UI
     const selectedInfo = document.getElementById('selected-info');
     const selectedNodeId = document.getElementById('selected-node-id');
+    const fullName = `${node.data["first name"] || ''} ${node.data["last name"] || ''}`.trim();
 
     if (selectedInfo && selectedNodeId) {
         selectedInfo.style.display = 'block';
-        selectedNodeId.textContent = node.id;
+        selectedNodeId.textContent = `${fullName} (ID: ${node.id})`;
     }
 
     // Clear search results when a node is selected
     clearSearchResults();
 
-    // Fetch network data for this node
-    showLoading(true);
-    try {
-        const networkData = await fetchNetworkData(node.id);
+    // Only fetch network data if this is coming from a direct chart click,
+    // not from a search highlight (to avoid unnecessary API calls)
+    if (!node._fromSearch) {
+        // Fetch network data for this node
+        showLoading(true);
+        try {
+            const networkData = await fetchNetworkData(node.id);
 
-        // Update chart data with network data
+            // Update chart data with network data
+            await updateChartData(networkData);
+
+            // Log the updated chart data size for verification
+            console.log("app.js: After update, chart data has", chartData.length, "items");
+
+            updateDataSourceIndicator(`Network data loaded for ID: ${node.id}`);
+        } catch (error) {
+            console.error('Error fetching network data:', error);
+            updateDataSourceIndicator(`Error loading network for ID: ${node.id}`, true);
+        } finally {
+            showLoading(false);
+        }
+    }
+}
+
+
+// async function handleNodeSelect(node) {
+//     selectedNode = node;
+
+//     // Update selected node info in UI
+//     const selectedInfo = document.getElementById('selected-info');
+//     const selectedNodeId = document.getElementById('selected-node-id');
+
+//     if (selectedInfo && selectedNodeId) {
+//         selectedInfo.style.display = 'block';
+//         selectedNodeId.textContent = node.id;
+//     }
+
+//     // Clear search results when a node is selected
+//     clearSearchResults();
+
+//     // Fetch network data for this node
+//     showLoading(true);
+//     try {
+//         const networkData = await fetchNetworkData(node.id);
+
+//         // Update chart data with network data
+//         await updateChartData(networkData);
+
+//         // Log the updated chart data size for verification
+//         console.log("app.js: After update, chart data has", chartData.length, "items");
+
+//         updateDataSourceIndicator(`Network data loaded for ID: ${node.id}`);
+//     } catch (error) {
+//         console.error('Error fetching network data:', error);
+//         updateDataSourceIndicator(`Error loading network for ID: ${node.id}`, true);
+//     } finally {
+//         showLoading(false);
+//     }
+// }
+
+
+
+
+/**
+ * Handle adding a person from search to the chart
+ * @param {Object} person - The person to add
+ */
+async function handleAddPersonFromSearch(person) {
+    console.log('Adding person to chart:', person);
+
+    // Show loading indicator
+    showLoading(true);
+
+    try {
+        // Clear the chart first (without confirmation)
+        clearChartData(false);
+
+        // Create a sanitized copy of the person to prevent errors with non-existent relationships
+        const sanitizedPerson = {
+            id: person.id,
+            data: { ...person.data },
+            rels: { "spouses": [], "Children": [] }
+            //rels: person.rels || {}  // Use existing rels or empty object
+        };
+
+        // Add sanitized person to chart data
+        //chartData.push(sanitizedPerson);
+
+        // Initialize chart with the single person
+        await initializeChart([sanitizedPerson], {
+            onNodeSelect: handleNodeSelect
+        });
+
+        // Important: Fetch network data for this person
+        console.log(`Fetching network data for ID: ${sanitizedPerson.id}`);
+        const networkData = await fetchNetworkData(sanitizedPerson.id);
+
+        // Update chart with network data
         await updateChartData(networkData);
 
-        // Log the updated chart data size for verification
-        console.log("app.js: After update, chart data has", chartData.length, "items");
+        // Update UI indicators
+        const fullName = `${sanitizedPerson.data["first name"] || ''} ${sanitizedPerson.data["last name"] || ''}`.trim();
+        updateDataSourceIndicator(`Added ${fullName} with ${networkData.length} connections`);
 
-        updateDataSourceIndicator(`Network data loaded for ID: ${node.id}`);
+        // Clear search results
+        clearSearchResults();
     } catch (error) {
-        console.error('Error fetching network data:', error);
-        updateDataSourceIndicator(`Error loading network for ID: ${node.id}`, true);
+        console.error('Error adding person to chart:', error);
+        updateDataSourceIndicator('Error adding person to chart', true);
     } finally {
         showLoading(false);
     }
 }
-
-
-
-
-// Handle adding a person from search to the chart
-function handleAddPersonFromSearch(person) {
-    console.log('Adding person to chart:', person);
-
-    // Create a sanitized copy of the person to prevent errors with non-existent relationships
-    const sanitizedPerson = {
-        id: person.id,
-        data: { ...person.data },
-        rels: {}  // Start with empty relationships
-    };
-
-    // Check if the chart is in empty state
-    const emptyStateEl = document.querySelector('.empty-chart-message');
-    if (emptyStateEl && chartData.length === 0) {
-        // Remove the empty state message
-        emptyStateEl.parentNode.removeChild(emptyStateEl);
-
-        // Initialize chart again since we're adding the first person
-        initializeChart([sanitizedPerson], {
-            onNodeSelect: handleNodeSelect
-        }).catch(error => {
-            console.error('Error initializing chart:', error);
-        });
-    }
-
-    // Double-check if person already exists (should be filtered by search.js, but just in case)
-    const existingPerson = chartData.find(p => p.id === sanitizedPerson.id);
-    if (existingPerson) {
-        // Person already exists, just select them
-        handleNodeSelect(existingPerson);
-        return;
-    }
-
-    // Add sanitized person to chart data
-    chartData.push(sanitizedPerson);
-
-    // Update chart with the new person
-    updateChartData([sanitizedPerson])
-        .then(() => {
-            // Select the newly added person
-            handleNodeSelect(sanitizedPerson);
-
-            // Update data source indicator
-            const fullName = `${sanitizedPerson.data["first name"] || ''} ${sanitizedPerson.data["last name"] || ''}`.trim();
-            updateDataSourceIndicator(`Added ${fullName} to the chart`);
-
-            // Clear and hide search results completely
-            clearSearchResults();
-        })
-        .catch(error => {
-            console.error('Error updating chart with new person:', error);
-            updateDataSourceIndicator('Error adding person to chart', true);
-        });
-}
-
 
 // Toggle edit form visibility
 function toggleEditForm() {
@@ -359,22 +397,32 @@ async function resetChart() {
 /**
  * Clear all chart data and display an empty state message
  */
-function clearChartData() {
-    // Show confirmation dialog
-    if (confirm('Are you sure you want to clear all chart data? This action cannot be undone.')) {
-        showLoading(true);
 
-        try {
-            // Clear chart data completely
-            updateChartDataStore([]);
 
-            // Get the chart container
-            const chartContainer = document.getElementById('FamilyChart');
-            if (chartContainer) {
-                // Clear any existing chart
-                chartContainer.innerHTML = '';
+/**
+ * Clear all chart data
+ * @param {boolean} showConfirm - Whether to show confirmation dialog
+ */
+function clearChartData(showConfirm = true) {
+    // Show confirmation dialog if requested
+    if (showConfirm && !confirm('Are you sure you want to clear all chart data? This action cannot be undone.')) {
+        return; // User canceled
+    }
 
-                // Create empty state message
+    showLoading(true);
+
+    try {
+        // Clear chart data completely
+        updateChartDataStore([]);
+
+        // Get the chart container
+        const chartContainer = document.getElementById('FamilyChart');
+        if (chartContainer) {
+            // Clear any existing chart
+            chartContainer.innerHTML = '';
+
+            // Create empty state message, but only if we're not about to add a new person
+            if (showConfirm) {
                 const emptyStateEl = document.createElement('div');
                 emptyStateEl.className = 'empty-chart-message';
                 emptyStateEl.innerHTML = `
@@ -388,28 +436,31 @@ function clearChartData() {
                 // Add to chart container
                 chartContainer.appendChild(emptyStateEl);
             }
-
-            // Reset application state
-            selectedNode = null;
-
-            // Update selected node info
-            const selectedInfo = document.getElementById('selected-info');
-            if (selectedInfo) {
-                selectedInfo.style.display = 'none';
-            }
-
-            // Close edit form if open
-            if (isEditFormVisible) {
-                toggleEditForm();
-            }
-
-            updateDataSourceIndicator('Chart data cleared');
-        } catch (error) {
-            console.error('Error clearing chart data:', error);
-            updateDataSourceIndicator('Error clearing chart data', true);
-        } finally {
-            showLoading(false);
         }
+
+        // Reset application state
+        selectedNode = null;
+
+        // Update selected node info
+        const selectedInfo = document.getElementById('selected-info');
+        if (selectedInfo) {
+            selectedInfo.style.display = 'none';
+        }
+
+        // Close edit form if open
+        if (isEditFormVisible) {
+            toggleEditForm();
+        }
+
+        if (showConfirm) {
+            // Only show this message if we're doing a user-initiated clear
+            updateDataSourceIndicator('Chart data cleared');
+        }
+    } catch (error) {
+        console.error('Error clearing chart data:', error);
+        updateDataSourceIndicator('Error clearing chart data', true);
+    } finally {
+        showLoading(false);
     }
 }
 

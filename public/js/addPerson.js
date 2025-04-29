@@ -650,5 +650,6 @@ function debounce(func, delay) {
 // Export necessary functions
 export {
     showAddPersonForm,
-    closeModal
+    closeModal,
+    showNotification
 };

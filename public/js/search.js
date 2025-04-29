@@ -1,6 +1,9 @@
 // Search functionality updates for the new layout
 import { searchByName, searchByLocation } from './api.js';
-import { chartData } from './app.js';
+import { getChartInstance, openEditTree, clearCurrentEditPerson } from './chart.js';
+import { showNotification } from './addPerson.js'
+
+import { chartData, handleNodeSelect, clearChartData } from './app.js';
 
 // Elements
 let searchForm;
@@ -78,6 +81,12 @@ export function setupSearch(options = {}) {
  * Handle search form submission
  * @param {Event} e - Form submit event
  */
+
+/**
+ * Handle search form submission
+ * @param {Event} e - Form submit event
+ */
+
 async function handleSearch(e) {
     e.preventDefault();
     console.log('Search handler triggered');
@@ -127,30 +136,37 @@ async function handleSearch(e) {
 
         console.log(`Search returned ${results.length} results`);
 
-        // Filter out people already in the chart
+        // Check existing chart IDs
         const existingIds = new Set(chartData.map(person => person.id));
-        const filteredResults = results.filter(person => !existingIds.has(person.id));
+
+        // Count people already in the chart
+        const inChartCount = results.filter(person => existingIds.has(person.id)).length;
+
+        // Count new people that can be added
+        const newCount = results.length - inChartCount;
 
         // Display results
-        if (filteredResults.length === 0) {
-            if (results.length > 0 && results.length !== filteredResults.length) {
-                showError(`All ${results.length} results are already in your chart`);
-            } else {
-                showError(`No results found for ${searchType}: "${searchTerm}"`);
-            }
+        if (results.length === 0) {
+            showError(`No results found for ${searchType}: "${searchTerm}"`);
         } else {
-            if (resultsCount) {
-                resultsCount.textContent = `Found ${filteredResults.length} ${filteredResults.length === 1 ? 'person' : 'people'}`;
-                resultsCount.style.display = 'block';
+            let statusText = '';
+
+            if (inChartCount > 0 && newCount > 0) {
+                statusText = `Found ${results.length} people: ${inChartCount} already in chart, ${newCount} can be added`;
+            } else if (inChartCount > 0) {
+                statusText = `Found ${inChartCount} ${inChartCount === 1 ? 'person' : 'people'} already in your chart`;
+            } else {
+                statusText = `Found ${newCount} ${newCount === 1 ? 'person' : 'people'} to add to your chart`;
             }
 
-            // Create person cards
-            if (personCards) {
-                filteredResults.forEach(person => {
-                    const card = createPersonCard(person);
-                    personCards.appendChild(card);
-                });
-            }
+            resultsCount.textContent = statusText;
+            resultsCount.style.display = 'block';
+
+            // Create person cards for all results
+            results.forEach(person => {
+                const card = createPersonCard(person, existingIds.has(person.id));
+                personCards.appendChild(card);
+            });
         }
 
         // Show search results dropdown
@@ -161,12 +177,100 @@ async function handleSearch(e) {
         showSearchResults();
     } finally {
         // Reset UI state
-        if (searchButton) {
-            searchButton.disabled = false;
-            searchButton.textContent = 'Search';
-        }
+        searchButton.disabled = false;
+        searchButton.textContent = 'Search';
     }
 }
+
+// async function handleSearch(e) {
+//     e.preventDefault();
+//     console.log('Search handler triggered');
+
+//     // Re-get elements to ensure we have the latest references
+//     if (!searchInput) searchInput = document.getElementById('search-input');
+//     if (!searchButton) searchButton = document.getElementById('search-button');
+//     if (!searchError) searchError = document.getElementById('search-error');
+//     if (!resultsCount) resultsCount = document.getElementById('results-count');
+//     if (!personCards) personCards = document.getElementById('person-cards');
+//     if (!searchResultsDropdown) searchResultsDropdown = document.querySelector('.search-results-dropdown');
+
+//     if (!searchInput || !searchButton) {
+//         console.error('Critical search elements not found');
+//         return;
+//     }
+
+//     const searchTerm = searchInput.value.trim();
+//     if (!searchTerm) {
+//         showError('Please enter a search term');
+//         showSearchResults();
+//         return;
+//     }
+
+//     // Get search type
+//     const searchTypeRadio = document.querySelector('input[name="searchType"]:checked');
+//     const searchType = searchTypeRadio ? searchTypeRadio.value : 'name'; // Default to name search
+
+//     console.log(`Performing ${searchType} search for: "${searchTerm}"`);
+
+//     // Update UI state
+//     searchButton.disabled = true;
+//     searchButton.textContent = 'Searching...';
+
+//     if (searchError) searchError.style.display = 'none';
+//     if (personCards) personCards.innerHTML = '';
+//     if (resultsCount) resultsCount.style.display = 'none';
+
+//     try {
+//         // Perform search
+//         let results;
+//         if (searchType === 'name') {
+//             results = await searchByName(searchTerm);
+//         } else {
+//             results = await searchByLocation(searchTerm);
+//         }
+
+//         console.log(`Search returned ${results.length} results`);
+
+//         // Filter out people already in the chart
+//         const existingIds = new Set(chartData.map(person => person.id));
+//         const filteredResults = results.filter(person => !existingIds.has(person.id));
+
+//         // Display results
+//         if (filteredResults.length === 0) {
+//             if (results.length > 0 && results.length !== filteredResults.length) {
+//                 showError(`All ${results.length} results are already in your chart`);
+//             } else {
+//                 showError(`No results found for ${searchType}: "${searchTerm}"`);
+//             }
+//         } else {
+//             if (resultsCount) {
+//                 resultsCount.textContent = `Found ${filteredResults.length} ${filteredResults.length === 1 ? 'person' : 'people'}`;
+//                 resultsCount.style.display = 'block';
+//             }
+
+//             // Create person cards
+//             if (personCards) {
+//                 filteredResults.forEach(person => {
+//                     const card = createPersonCard(person);
+//                     personCards.appendChild(card);
+//                 });
+//             }
+//         }
+
+//         // Show search results dropdown
+//         showSearchResults();
+//     } catch (error) {
+//         console.error('Search error:', error);
+//         showError(`Error searching: ${error.message}`);
+//         showSearchResults();
+//     } finally {
+//         // Reset UI state
+//         if (searchButton) {
+//             searchButton.disabled = false;
+//             searchButton.textContent = 'Search';
+//         }
+//     }
+// }
 
 /**
  * Show the search results dropdown
@@ -221,7 +325,8 @@ function showError(message) {
  * @param {Object} person - Person data
  * @returns {HTMLElement} The card element
  */
-function createPersonCard(person) {
+
+function createPersonCard(person, isInChart) {
     // Default avatar image if none is provided
     const defaultAvatar = "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg";
 
@@ -235,6 +340,11 @@ function createPersonCard(person) {
     const card = document.createElement('div');
     card.className = 'person-card';
     card.dataset.id = person.id;
+
+    // Add a class if the person is already in chart
+    if (isInChart) {
+        card.classList.add('in-chart');
+    }
 
     card.innerHTML = `
         <div class="person-card-avatar">
@@ -276,60 +386,163 @@ function createPersonCard(person) {
         </div>
         
         <div class="person-card-action">
-            <button class="add-to-tree-btn">Add to Tree</button>
+            <button class="${isInChart ? 'locate-in-tree-btn' : 'add-to-tree-btn'}">
+                ${isInChart ? 'Show in Tree' : 'Add to Tree'}
+            </button>
         </div>
     `;
 
-    // Add person selection handler
-    function handlePersonSelection() {
-        if (searchOptions.onPersonSelect) {
-            // Add 'adding' class for styling
-            card.classList.add('adding');
+    // Add click handler to the entire card
+    card.addEventListener('click', (e) => {
+        // Only respond to clicks outside buttons
+        if (!e.target.closest('button')) {
+            handlePersonSelection(person, isInChart);
+        }
+    });
 
-            // Replace card content with loading indicator
+    // Add button click handler
+    const actionButton = card.querySelector(isInChart ? '.locate-in-tree-btn' : '.add-to-tree-btn');
+    if (actionButton) {
+        actionButton.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent card click
+            handlePersonSelection(person, isInChart);
+        });
+    }
+
+    return card;
+}
+
+
+
+// function createPersonCard(person) {
+//     // Default avatar image if none is provided
+//     const defaultAvatar = "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg";
+
+//     // Format person details for display
+//     const fullName = `${person.data["first name"] || ''} ${person.data["last name"] || ''}`.trim();
+//     const location = person.data.location || 'Unknown location';
+//     const birthday = person.data.birthday || 'No birthday info';
+//     const gender = person.data.gender === 'M' ? 'Male' : person.data.gender === 'F' ? 'Female' : 'Not specified';
+
+//     // Create the card element
+//     const card = document.createElement('div');
+//     card.className = 'person-card';
+//     card.dataset.id = person.id;
+
+//     card.innerHTML = `
+//         <div class="person-card-avatar">
+//             <img 
+//                 src="${person.data.avatar || defaultAvatar}" 
+//                 alt="${fullName}" 
+//                 class="avatar ${person.data.gender === 'M' ? 'male' : person.data.gender === 'F' ? 'female' : 'neutral'}"
+//             />
+//         </div>
+
+//         <div class="person-card-info">
+//             <h3 class="person-name">${fullName}</h3>
+
+//             <div class="person-details">
+//                 <div class="detail">
+//                     <span class="detail-label">Location:</span>
+//                     <span class="detail-value">${location}</span>
+//                 </div>
+
+//                 <div class="detail">
+//                     <span class="detail-label">Gender:</span>
+//                     <span class="detail-value">${gender}</span>
+//                 </div>
+
+//                 ${person.data.birthday ? `
+//                     <div class="detail">
+//                         <span class="detail-label">Birthday:</span>
+//                         <span class="detail-value">${birthday}</span>
+//                     </div>
+//                 ` : ''}
+
+//                 ${person.data.work ? `
+//                     <div class="detail">
+//                         <span class="detail-label">Work:</span>
+//                         <span class="detail-value">${person.data.work}</span>
+//                     </div>
+//                 ` : ''}
+//             </div>
+//         </div>
+
+//         <div class="person-card-action">
+//             <button class="add-to-tree-btn">Add to Tree</button>
+//         </div>
+//     `;
+
+// Add person selection handler
+
+
+/**
+* Handle person selection from search results
+* @param {Object} person - The selected person
+* @param {boolean} isInChart - Whether the person is already in chart
+*/
+
+function handlePersonSelection(person, isInChart) {
+    if (isInChart) {
+        // If person is already in chart, focus and highlight them
+        highlightPersonInChart(person);
+    } else {
+        // Visually update the card to show loading
+        const card = document.querySelector(`.person-card[data-id="${person.id}"]`);
+        if (card) {
+            card.classList.add('adding');
             card.innerHTML = `
                 <div class="adding-indicator">
                     <div class="adding-spinner"></div>
                     <div>Adding to chart...</div>
                 </div>
             `;
+        }
 
-            // Make sure person has a rels object to prevent chart errors
-            if (!person.rels) {
-                person.rels = { "spouses": [], "children": [] };
-            }
+        // Make sure person has a rels object
+        if (!person.rels) {
+            person.rels = { "spouses": [], "children": [] };
+        }
 
-            // Call the selection handler after a short delay
-            setTimeout(() => {
-                searchOptions.onPersonSelect(person);
-
-                // After adding person to the chart, hide all search results
-                setTimeout(() => {
-                    clearSearchResults();
-                }, 1000);
-            }, 500);
+        // Use the handler that properly fetches network data
+        if (searchOptions.onPersonSelect) {
+            searchOptions.onPersonSelect(person);
         }
     }
-
-    // Add click handler to the entire card
-    card.addEventListener('click', (e) => {
-        // Only respond to clicks outside buttons
-        if (!e.target.closest('button')) {
-            handlePersonSelection();
-        }
-    });
-
-    // Add button click handler
-    const addButton = card.querySelector('.add-to-tree-btn');
-    if (addButton) {
-        addButton.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent card click
-            handlePersonSelection();
-        });
-    }
-
-    return card;
 }
+
+
+// function handlePersonSelection() {
+//     if (searchOptions.onPersonSelect) {
+//         // Add 'adding' class for styling
+//         card.classList.add('adding');
+
+//         // Replace card content with loading indicator
+//         card.innerHTML = `
+//             <div class="adding-indicator">
+//                 <div class="adding-spinner"></div>
+//                 <div>Adding to chart...</div>
+//             </div>
+//         `;
+
+//         // Make sure person has a rels object to prevent chart errors
+//         if (!person.rels) {
+//             person.rels = { "spouses": [], "children": [] };
+//         }
+
+//         // Call the selection handler after a short delay
+//         setTimeout(() => {
+//             searchOptions.onPersonSelect(person);
+
+//             // After adding person to the chart, hide all search results
+//             setTimeout(() => {
+//                 clearSearchResults();
+//             }, 1000);
+//         }, 500);
+//     }
+// }
+
+
 
 /**
  * Clear search results with smooth animation
@@ -364,5 +577,42 @@ export function clearSearchResults() {
     if (!searchInput) searchInput = document.getElementById('search-input');
     if (searchInput) {
         searchInput.value = '';
+    }
+}
+
+
+/**
+ * Highlight a person in the family chart
+ * @param {Object} person - The person to highlight
+ */
+
+function highlightPersonInChart(person) {
+    // Get the chart instance
+    const chartInstance = getChartInstance();
+    if (!chartInstance || !chartInstance.chart) {
+        console.error('Chart instance not found');
+        showNotification('Error finding chart instance', 'error');
+        return;
+    }
+
+    try {
+        // Show a notification
+        showNotification(`Showing ${person.data["first name"]} ${person.data["last name"]} in the chart`, 'info');
+
+        // Clear search results
+        clearSearchResults();
+
+        // Set this as the main node
+        chartInstance.chart.updateMainId(person.id);
+        chartInstance.chart.updateTree({
+            tree_position: 'fit',
+            transition_time: 1000
+        });
+
+        // Select the node
+        handleNodeSelect(person);
+    } catch (error) {
+        console.error('Error highlighting person in chart:', error);
+        showNotification('Error highlighting person in chart', 'error');
     }
 }
