@@ -12,75 +12,70 @@
     <script type="module" src="./js/search.js"></script>
 </head>
 
-
 <body>
     <div class="app">
+        <!-- Header with app title -->
         <header class="app-header">
-            <h1>Family Tree Explorer</h1>
+            <div class="header-title">
+                <h1>Family Tree Explorer</h1>
+            </div>
+            <div class="header-controls">
+                <button id="edit-button" class="control-btn edit-btn">Edit Person</button>
+                <button id="add-person-button" class="control-btn add-person-btn">Add New Person</button>
+                <button id="clear-button" class="control-btn clear-btn">Clear Chart</button>
+            </div>
         </header>
 
-        <div class="app-content">
-            <aside class="app-sidebar">
-                <!-- Search Component -->
-                <div class="search-component">
-                    <h2>Search</h2>
-                    <form id="search-form">
-                        <div class="search-type">
-                            <label>
-                                <input type="radio" name="searchType" value="name" checked>
-                                Name
-                            </label>
-                            <label>
-                                <input type="radio" name="searchType" value="location">
-                                Location
-                            </label>
-                        </div>
-                        <div class="search-input-container">
-                            <input type="text" id="search-input" placeholder="Search by name...">
-                            <button type="submit" id="search-button">Search</button>
-                        </div>
-                    </form>
-                    <div id="search-error" class="search-error" style="display: none;"></div>
-                    <div id="search-results" class="search-results">
-                        <div id="results-count" class="results-count" style="display: none;"></div>
-                        <div id="person-cards" class="person-cards"></div>
-                    </div>
+        <!-- Search bar below header -->
+        <div class="search-bar">
+            <div class="search-container">
+                <div class="search-type">
+                    <label>
+                        <input type="radio" name="searchType" value="name" checked>
+                        Name
+                    </label>
+                    <label>
+                        <input type="radio" name="searchType" value="location">
+                        Location
+                    </label>
                 </div>
-
-                <!-- Control Panel -->
-                <div class="control-panel">
-                    <h2>Family Tree Controls</h2>
-                    <div class="control-panel-section">
-                        <button id="edit-button" class="control-btn edit-btn">Edit Person</button>
-                        <button id="highlight-button" class="control-btn highlight-btn" disabled>Highlight Connected
-                            Nodes</button>
-                    </div>
-                    <div class="control-panel-section">
-                        <button id="reset-button" class="control-btn reset-btn">Reset Chart</button>
-                        <button id="download-button" class="control-btn download-btn">Download JSON</button>
-                    </div>
-                    <div id="selected-info" class="selected-node-info" style="display: none;">
-                        Selected Node: <span id="selected-node-id"></span>
-                    </div>
+                <div class="search-input-container">
+                    <input type="text" id="search-input" placeholder="Search by name...">
+                    <button type="submit" id="search-button">Search</button>
                 </div>
-            </aside>
+            </div>
 
-            <main class="app-main">
-                <!-- Family Chart -->
-                <div id="FamilyChart" class="f3"></div>
-                <div id="loading-indicator" class="loading-indicator">Loading data...</div>
-                <div id="data-source-indicator" class="data-source-indicator">Initial data loaded</div>
-
-                <!-- Edit Form (initially hidden) -->
-                <div id="edit-form" class="edit-form">
-                    <div class="edit-form-header">
-                        <h2 id="edit-form-title">Edit Person</h2>
-                        <button id="close-edit-form" class="close-button">&times;</button>
-                    </div>
-                    <div id="edit-form-content" class="edit-form-content"></div>
+            <div class="node-info-container">
+                <div id="selected-info" class="selected-node-info" style="display: none;">
+                    Selected Node: <span id="selected-node-id"></span>
                 </div>
-            </main>
+            </div>
         </div>
+
+        <!-- Search results dropdown -->
+        <div class="search-results-dropdown" style="display: none;">
+            <div id="search-error" class="search-error" style="display: none;"></div>
+            <div id="results-count" class="results-count" style="display: none;"></div>
+            <div id="person-cards" class="person-cards"></div>
+            <button class="close-results-btn">Close</button>
+        </div>
+
+        <!-- Full width chart area -->
+        <main class="app-main full-width">
+            <!-- Family Chart -->
+            <div id="FamilyChart" class="f3"></div>
+            <div id="loading-indicator" class="loading-indicator">Loading data...</div>
+            <div id="data-source-indicator" class="data-source-indicator">Initial data loaded</div>
+
+            <!-- Edit Form (initially hidden) -->
+            <div id="edit-form" class="edit-form">
+                <div class="edit-form-header">
+                    <h2 id="edit-form-title">Edit Person</h2>
+                    <button id="close-edit-form" class="close-button">&times;</button>
+                </div>
+                <div id="edit-form-content" class="edit-form-content"></div>
+            </div>
+        </main>
     </div>
 
     <!-- JavaScript Modules -->

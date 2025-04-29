@@ -1,14 +1,16 @@
-// Search functionality
+// Search functionality updates for the new layout
 import { searchByName, searchByLocation } from './api.js';
 import { chartData } from './app.js';
 
 // Elements
-const searchForm = document.getElementById('search-form');
-const searchInput = document.getElementById('search-input');
-const searchButton = document.getElementById('search-button');
-const searchError = document.getElementById('search-error');
-const resultsCount = document.getElementById('results-count');
-const personCards = document.getElementById('person-cards');
+let searchForm;
+let searchInput;
+let searchButton;
+let searchError;
+let resultsCount;
+let personCards;
+let searchResultsDropdown;
+let closeResultsBtn;
 
 // Default options
 let searchOptions = {
@@ -23,9 +25,39 @@ export function setupSearch(options = {}) {
     // Merge options
     searchOptions = { ...searchOptions, ...options };
 
+    // Get all elements (doing this at setup time to ensure DOM is ready)
+    searchForm = document.getElementById('search-form') || document.querySelector('.search-container');
+    searchInput = document.getElementById('search-input');
+    searchButton = document.getElementById('search-button');
+    searchError = document.getElementById('search-error');
+    resultsCount = document.getElementById('results-count');
+    personCards = document.getElementById('person-cards');
+    searchResultsDropdown = document.querySelector('.search-results-dropdown');
+    closeResultsBtn = document.querySelector('.close-results-btn');
+
+    // Debug check
+    console.log('Search elements found:', {
+        searchForm: !!searchForm,
+        searchInput: !!searchInput,
+        searchButton: !!searchButton,
+        searchError: !!searchError,
+        resultsCount: !!resultsCount,
+        personCards: !!personCards,
+        searchResultsDropdown: !!searchResultsDropdown,
+        closeResultsBtn: !!closeResultsBtn
+    });
+
     // Set up event listeners
-    if (searchForm) {
+    if (searchButton) {
+        searchButton.addEventListener('click', handleSearch);
+        console.log('Search button click handler attached');
+    } else {
+        console.error('Search button not found');
+    }
+
+    if (searchForm && searchForm.tagName === 'FORM') {
         searchForm.addEventListener('submit', handleSearch);
+        console.log('Search form submit handler attached');
     }
 
     // Set up radio buttons
@@ -33,6 +65,11 @@ export function setupSearch(options = {}) {
     radioButtons.forEach(radio => {
         radio.addEventListener('change', handleSearchTypeChange);
     });
+
+    // Set up close results button
+    if (closeResultsBtn) {
+        closeResultsBtn.addEventListener('click', clearSearchResults);
+    }
 
     console.log('Search component initialized');
 }
@@ -43,27 +80,41 @@ export function setupSearch(options = {}) {
  */
 async function handleSearch(e) {
     e.preventDefault();
+    console.log('Search handler triggered');
 
-    if (!searchInput || !searchButton || !searchError || !resultsCount || !personCards) {
-        console.error('Search elements not found');
+    // Re-get elements to ensure we have the latest references
+    if (!searchInput) searchInput = document.getElementById('search-input');
+    if (!searchButton) searchButton = document.getElementById('search-button');
+    if (!searchError) searchError = document.getElementById('search-error');
+    if (!resultsCount) resultsCount = document.getElementById('results-count');
+    if (!personCards) personCards = document.getElementById('person-cards');
+    if (!searchResultsDropdown) searchResultsDropdown = document.querySelector('.search-results-dropdown');
+
+    if (!searchInput || !searchButton) {
+        console.error('Critical search elements not found');
         return;
     }
 
     const searchTerm = searchInput.value.trim();
     if (!searchTerm) {
         showError('Please enter a search term');
+        showSearchResults();
         return;
     }
 
     // Get search type
-    const searchType = document.querySelector('input[name="searchType"]:checked').value;
+    const searchTypeRadio = document.querySelector('input[name="searchType"]:checked');
+    const searchType = searchTypeRadio ? searchTypeRadio.value : 'name'; // Default to name search
+
+    console.log(`Performing ${searchType} search for: "${searchTerm}"`);
 
     // Update UI state
     searchButton.disabled = true;
     searchButton.textContent = 'Searching...';
-    searchError.style.display = 'none';
-    personCards.innerHTML = '';
-    resultsCount.style.display = 'none';
+
+    if (searchError) searchError.style.display = 'none';
+    if (personCards) personCards.innerHTML = '';
+    if (resultsCount) resultsCount.style.display = 'none';
 
     try {
         // Perform search
@@ -73,6 +124,8 @@ async function handleSearch(e) {
         } else {
             results = await searchByLocation(searchTerm);
         }
+
+        console.log(`Search returned ${results.length} results`);
 
         // Filter out people already in the chart
         const existingIds = new Set(chartData.map(person => person.id));
@@ -86,22 +139,47 @@ async function handleSearch(e) {
                 showError(`No results found for ${searchType}: "${searchTerm}"`);
             }
         } else {
-            resultsCount.textContent = `Found ${filteredResults.length} ${filteredResults.length === 1 ? 'person' : 'people'}`;
-            resultsCount.style.display = 'block';
+            if (resultsCount) {
+                resultsCount.textContent = `Found ${filteredResults.length} ${filteredResults.length === 1 ? 'person' : 'people'}`;
+                resultsCount.style.display = 'block';
+            }
 
             // Create person cards
-            filteredResults.forEach(person => {
-                const card = createPersonCard(person);
-                personCards.appendChild(card);
-            });
+            if (personCards) {
+                filteredResults.forEach(person => {
+                    const card = createPersonCard(person);
+                    personCards.appendChild(card);
+                });
+            }
         }
+
+        // Show search results dropdown
+        showSearchResults();
     } catch (error) {
         console.error('Search error:', error);
         showError(`Error searching: ${error.message}`);
+        showSearchResults();
     } finally {
         // Reset UI state
-        searchButton.disabled = false;
-        searchButton.textContent = 'Search';
+        if (searchButton) {
+            searchButton.disabled = false;
+            searchButton.textContent = 'Search';
+        }
+    }
+}
+
+/**
+ * Show the search results dropdown
+ */
+function showSearchResults() {
+    if (!searchResultsDropdown) {
+        searchResultsDropdown = document.querySelector('.search-results-dropdown');
+    }
+
+    if (searchResultsDropdown) {
+        searchResultsDropdown.style.display = 'flex';
+    } else {
+        console.error('Search results dropdown not found');
     }
 }
 
@@ -111,6 +189,8 @@ async function handleSearch(e) {
  */
 function handleSearchTypeChange(e) {
     const searchType = e.target.value;
+    if (!searchInput) searchInput = document.getElementById('search-input');
+
     if (searchInput) {
         searchInput.placeholder = `Search by ${searchType}...`;
     }
@@ -121,11 +201,19 @@ function handleSearchTypeChange(e) {
  * @param {string} message - Error message
  */
 function showError(message) {
+    if (!searchError) searchError = document.getElementById('search-error');
+    if (!resultsCount) resultsCount = document.getElementById('results-count');
+
     if (searchError) {
         searchError.textContent = message;
         searchError.style.display = 'block';
-        resultsCount.style.display = 'none';
+
+        if (resultsCount) {
+            resultsCount.style.display = 'none';
+        }
     }
+
+    console.error('Search error:', message);
 }
 
 /**
@@ -217,25 +305,7 @@ function createPersonCard(person) {
 
                 // After adding person to the chart, hide all search results
                 setTimeout(() => {
-                    // Clear the search input
-                    if (searchInput) {
-                        searchInput.value = '';
-                    }
-
-                    // Hide the search results
-                    if (personCards) {
-                        personCards.innerHTML = '';
-                    }
-
-                    // Hide results count
-                    if (resultsCount) {
-                        resultsCount.style.display = 'none';
-                    }
-
-                    // Reset any error messages
-                    if (searchError) {
-                        searchError.style.display = 'none';
-                    }
+                    clearSearchResults();
                 }, 1000);
             }, 500);
         }
@@ -265,37 +335,34 @@ function createPersonCard(person) {
  * Clear search results with smooth animation
  */
 export function clearSearchResults() {
-    if (!personCards || !resultsCount || !searchError) return;
-
-    // Apply hiding classes for smooth transition
-    personCards.classList.add('hiding');
-    resultsCount.classList.add('hiding');
-
-    // Find the search component container
-    const searchComponent = document.querySelector('.search-component');
-    if (searchComponent) {
-        searchComponent.classList.add('results-hidden');
+    if (!searchResultsDropdown) {
+        searchResultsDropdown = document.querySelector('.search-results-dropdown');
     }
 
-    // Hide error message immediately
-    searchError.style.display = 'none';
+    if (!searchResultsDropdown) return;
 
-    // After transition completes, fully clear the content
-    setTimeout(() => {
-        // Clear the content
+    // Hide the dropdown
+    searchResultsDropdown.style.display = 'none';
+
+    // Reset the elements
+    if (!personCards) personCards = document.getElementById('person-cards');
+    if (personCards) {
         personCards.innerHTML = '';
+    }
 
-        // Reset display properties
+    if (!resultsCount) resultsCount = document.getElementById('results-count');
+    if (resultsCount) {
         resultsCount.style.display = 'none';
+    }
 
-        // Remove transition classes
-        personCards.classList.remove('hiding');
-        resultsCount.classList.remove('hiding');
+    if (!searchError) searchError = document.getElementById('search-error');
+    if (searchError) {
+        searchError.style.display = 'none';
+    }
 
-        // Clear the search input
-        if (searchInput) {
-            searchInput.value = '';
-            searchInput.focus(); // Optional: Return focus to search input
-        }
-    }, 500); // Match this timing with the CSS transition duration
+    // Clear the search input
+    if (!searchInput) searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.value = '';
+    }
 }

@@ -78,6 +78,10 @@ async function initApp() {
 }
 
 // Handle node selection
+/**
+ * Handle node selection
+ * @param {Object} node - The selected node
+ */
 async function handleNodeSelect(node) {
     selectedNode = node;
 
@@ -88,17 +92,6 @@ async function handleNodeSelect(node) {
     if (selectedInfo && selectedNodeId) {
         selectedInfo.style.display = 'block';
         selectedNodeId.textContent = node.id;
-    }
-
-    // Enable highlight button
-    const highlightBtn = document.getElementById('highlight-button');
-    if (highlightBtn) {
-        highlightBtn.disabled = false;
-    }
-
-    // Apply highlighting if mode is enabled
-    if (highlightModeEnabled) {
-        applyHighlighting(node.id);
     }
 
     // Clear search results when a node is selected
@@ -123,6 +116,7 @@ async function handleNodeSelect(node) {
         showLoading(false);
     }
 }
+
 
 
 
@@ -184,9 +178,6 @@ function handleAddPersonFromSearch(person) {
 
 // Toggle edit form visibility
 function toggleEditForm() {
-    // Debug check for selectedNode
-    console.log("toggleEditForm - selectedNode:", selectedNode ? selectedNode.id : "not selected");
-
     // Check if a node is selected
     if (!selectedNode) {
         // Show a notification to the user
@@ -212,7 +203,6 @@ function toggleEditForm() {
     const editBtn = document.getElementById('edit-button');
 
     if (editForm && editBtn) {
-        console.log("Now Tryint to edit ", selectedNode)
         if (isEditFormVisible) {
             // Initialize form with selected node
             try {
@@ -387,12 +377,12 @@ function clearChartData() {
                 const emptyStateEl = document.createElement('div');
                 emptyStateEl.className = 'empty-chart-message';
                 emptyStateEl.innerHTML = `
-          <div class="empty-chart-content">
-            <h2>Family Tree is Empty</h2>
-            <p>Use the search function to find and add people to your family tree.</p>
-            <div class="empty-chart-icon">👪</div>
-          </div>
-        `;
+                    <div class="empty-chart-content">
+                        <h2>Family Tree is Empty</h2>
+                        <p>Use the search function to find and add people to your family tree.</p>
+                        <div class="empty-chart-icon">👪</div>
+                    </div>
+                `;
 
                 // Add to chart container
                 chartContainer.appendChild(emptyStateEl);
@@ -400,20 +390,11 @@ function clearChartData() {
 
             // Reset application state
             selectedNode = null;
-            highlightModeEnabled = false;
 
-            // Update UI elements
+            // Update selected node info
             const selectedInfo = document.getElementById('selected-info');
-            const highlightBtn = document.getElementById('highlight-button');
-
             if (selectedInfo) {
                 selectedInfo.style.display = 'none';
-            }
-
-            if (highlightBtn) {
-                highlightBtn.disabled = true;
-                highlightBtn.classList.remove('active');
-                highlightBtn.textContent = 'Highlight Connected Nodes';
             }
 
             // Close edit form if open
@@ -422,14 +403,15 @@ function clearChartData() {
             }
 
             updateDataSourceIndicator('Chart data cleared');
-            showLoading(false);
         } catch (error) {
             console.error('Error clearing chart data:', error);
             updateDataSourceIndicator('Error clearing chart data', true);
+        } finally {
             showLoading(false);
         }
     }
 }
+
 
 /**
  * Create a new person and add them to the chart
@@ -484,18 +466,25 @@ function downloadChartData() {
 
 // Show or hide loading indicator
 function showLoading(show) {
+    const loadingIndicator = document.getElementById('loading-indicator');
     if (loadingIndicator) {
         loadingIndicator.style.display = show ? 'block' : 'none';
     }
 }
 
-// Update data source indicator
+/**
+ * Update data source indicator
+ * @param {string} message - Message to display
+ * @param {boolean} isError - Whether this is an error message
+ */
 function updateDataSourceIndicator(message, isError = false) {
+    const dataSourceIndicator = document.getElementById('data-source-indicator');
     if (dataSourceIndicator) {
         dataSourceIndicator.textContent = message;
         dataSourceIndicator.style.backgroundColor = isError ? 'rgba(231, 76, 60, 0.7)' : 'rgba(0, 0, 0, 0.7)';
     }
 }
+
 
 // Initialize the app when DOM is ready
 document.addEventListener('DOMContentLoaded', initApp);
