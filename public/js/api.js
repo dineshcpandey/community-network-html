@@ -1,6 +1,8 @@
 // API service functions
 
 const API_BASE_URL = 'http://localhost:5050/api/details';
+//const API_BASE_URL = 'http://192.168.1.37:5050/api/details';
+
 
 /**
  * Fetch initial family tree data
@@ -119,12 +121,16 @@ export async function updatePersonData(personId, personData) {
  * @param {Object} personData - The person data from the chart
  * @returns {Object} Formatted data for the API
  */
+
 function formatPersonDataForApi(personData) {
+    // Create a simpler copy to avoid deep cloning overhead
+    const cleanedData = Object.assign({}, personData);
+
     // Extract person's first and last names
     const firstName = personData.data["first name"] || "";
     const lastName = personData.data["last name"] || "";
 
-    // Create the API payload according to the expected format
+    // Create the API payload with minimal processing
     return {
         personname: `${firstName} ${lastName}`.trim(),
         birthdate: personData.data.birthday || null,
@@ -137,13 +143,9 @@ function formatPersonDataForApi(personData) {
         nativeplace: personData.data.nativePlace || null,
         phone: personData.data.contact?.phone || null,
         mail_id: personData.data.contact?.email || null,
-        living: "Y", // Default to living
-        data: {
-            ...personData.data
-        },
-        rels: {
-            ...personData.rels
-        }
+        living: "Y",
+        data: personData.data,
+        rels: personData.rels
     };
 }
 

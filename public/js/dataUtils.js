@@ -76,8 +76,9 @@ export function mergeNetworkData(chartData, networkData) {
  * @returns {Array} - Cleaned data
  */
 export function cleanInvalidReferences(data) {
-    console.log("dataUtils.js: Cleaning invalid references from", data.length, "items");
 
+    console.log("dataUtils.js: Cleaning invalid references from", data.length, "items");
+    console.dir(data)
     // Clone the data to avoid unexpected mutations
     const processedData = JSON.parse(JSON.stringify(data));
 

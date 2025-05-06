@@ -23,7 +23,7 @@ export function initAddRelative(options = {}) {
  * @param {Object} originalPerson - The original person being edited
  */
 export function handleNewRelativeClick(newRelativeData, originalPerson) {
-    console.log('Add relative clicked:', newRelativeData._new_rel_data);
+    console.log('Add relative clicked:', newRelativeData);
 
     // Store references for later use
     currentNewRelativeData = newRelativeData;
@@ -35,9 +35,14 @@ export function handleNewRelativeClick(newRelativeData, originalPerson) {
 
     // Get the relationship type
     const relType = newRelativeData._new_rel_data.rel_type;
+    console.log("OriginalPerson :", originalPerson)
+    console.log("newRelativeData._new_rel_data :", newRelativeData._new_rel_data)
+
 
     // Create form data with pre-populated values
     const formData = createPrePopulatedData(relType, originalPerson);
+    console.log("formData :", formData)
+
 
     // Open the edit form with this data
     openEditFormForNewRelative(formData, relType);
@@ -84,6 +89,7 @@ function createPrePopulatedData(relType, originalPerson) {
  * @returns {Object} Relationship data
  */
 function createRelationshipsData(relType, originalPerson) {
+    console.log("AddRelative createRelationshipsData ", originalPerson)
     const rels = {};
 
     switch (relType) {
@@ -101,8 +107,10 @@ function createRelationshipsData(relType, originalPerson) {
             // Set parent based on original person's gender
             if (originalPerson.data.gender === 'M') {
                 rels.father = originalPerson.id;
+                console.log("addRelative.js createRelationshipsData Added Father: ", originalPerson.id)
             } else {
                 rels.mother = originalPerson.id;
+                console.log("addRelative.js createRelationshipsData Added Father: ", originalPerson.id)
             }
             break;
     }
@@ -273,6 +281,7 @@ async function handleAddRelativeSubmit(e) {
             gender: formData.gender,
             currentlocation: formData.location,
             // Use the relationship data from the placeholder
+
             fatherid: rels.father || null,
             motherid: rels.mother || null,
             spouseid: rels.spouses && rels.spouses.length > 0 ? rels.spouses[0] : null,
@@ -344,6 +353,7 @@ async function handleAddRelativeSubmit(e) {
  * @param {Object} relationships - Relationship data from placeholder
  */
 async function updateConnectedPeopleRelationships(newPersonId, relationships) {
+    console.log(" updateConnectedPeopleRelationships ", newPersonId, relationships)
     const updatePromises = [];
 
     // Update father if exists in relationships
@@ -399,6 +409,9 @@ async function updateConnectedPeopleRelationships(newPersonId, relationships) {
  * @returns {Promise<Object>} The updated original person
  */
 async function updateOriginalPersonRelationships(originalPerson, newPerson, relType) {
+    console.log(" updateOriginalPersonRelationships originalPerson", originalPerson)
+    console.log(" newPerson", newPerson)
+    console.log(" relType", relType)
     // Clone the original person to avoid direct mutation
     const updatedPerson = JSON.parse(JSON.stringify(originalPerson));
 
@@ -420,6 +433,7 @@ async function updateOriginalPersonRelationships(originalPerson, newPerson, relT
         case 'daughter':
             if (!updatedPerson.rels.children) updatedPerson.rels.children = [];
             if (!updatedPerson.rels.children.includes(newPerson.id)) {
+                console.log("Commented this ")
                 updatedPerson.rels.children.push(newPerson.id);
             }
             break;

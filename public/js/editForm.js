@@ -1,6 +1,7 @@
-// Edit Form functionality
+// Edit Form functionality - Updated with relationship search support
 import { getChartInstance, openEditTree, clearCurrentEditPerson } from './chart.js';
-import { resetAddRelativeState } from './addRelative.js'
+import { resetAddRelativeState } from './addRelative.js';
+import { initEditRelations, saveRelationships } from './editRelations.js';
 
 // Elements
 const editForm = document.getElementById('edit-form');
@@ -25,7 +26,24 @@ export function setupEditForm(options = {}) {
         closeEditFormBtn.addEventListener('click', handleClose);
     }
 
+    // Add stylesheet for edit relations
+    addRelationsStylesheet();
+
     console.log('Edit form initialized');
+}
+
+/**
+ * Add the CSS stylesheet for edit relations
+ */
+function addRelationsStylesheet() {
+    // Check if stylesheet is already added
+    if (document.getElementById('edit-relations-styles')) return;
+
+    const link = document.createElement('link');
+    link.id = 'edit-relations-styles';
+    link.rel = 'stylesheet';
+    link.href = './styles/editRelations.css';
+    document.head.appendChild(link);
 }
 
 /**
@@ -60,11 +78,51 @@ export function openEditForm(person) {
         setTimeout(() => {
             // Open edit tree form for this person using direct function
             openEditTree(person);
+
+            // Initialize edit relations after a slight delay to ensure the f3 form is rendered
+            setTimeout(() => {
+                initEditRelations(person);
+            }, 100);
         }, 50);
+
+        // Add a mutation observer to detect when the family form is added to the DOM
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    for (let i = 0; i < mutation.addedNodes.length; i++) {
+                        const node = mutation.addedNodes[i];
+                        if (node.nodeType === 1 && node.querySelector && node.querySelector('#familyForm')) {
+                            // We found the family form, initialize edit relations
+                            initEditRelations(person);
+                            observer.disconnect();
+                            break;
+                        }
+                    }
+                }
+            });
+        });
+
+        // Start observing the edit form content
+        observer.observe(editFormContent, { childList: true, subtree: true });
 
         console.log('Edit form opened for person:', person.id);
     } catch (error) {
         console.error('Error opening edit form:', error);
+    }
+}
+
+/**
+ * Hook into the form submission process to save relationships
+ * This function should be called by the chart.js when handling form submission
+ * @param {Object} person - The person being edited
+ * @returns {Promise} Promise resolving when relationships are saved
+ */
+export async function saveRelationshipsOnSubmit(person) {
+    try {
+        return await saveRelationships();
+    } catch (error) {
+        console.error('Error saving relationships on submit:', error);
+        throw error;
     }
 }
 

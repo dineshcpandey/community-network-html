@@ -1,0 +1,246 @@
+/* Search bar styling */
+.search-bar {
+    background-color: #f5f5f5;
+    padding: 0.8rem 1.5rem;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 5;
+}
+
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+    max-width: 650px;
+}
+
+.search-type {
+    display: flex;
+    gap: 1rem;
+}
+
+.search-type label {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #2c3e50;
+}
+
+.search-input-container {
+    display: flex;
+    gap: 0.5rem;
+    flex-grow: 1;
+}
+
+#search-input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+#search-button {
+    padding: 0.5rem 1rem;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#search-button:hover {
+    background-color: #2980b9;
+}
+
+/* Search results dropdown */
+.search-results-dropdown {
+    position: absolute;
+    top: 95px;
+    /* Positioned below search bar */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 600px;
+    max-height: 400px;
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+/* Node info styling */
+.node-info-container {
+    display: flex;
+    align-items: center;
+}
+
+.selected-node-info {
+    padding: 0.5rem 1rem;
+    background-color: #ecf0f1;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #2c3e50;
+}
+
+.selected-node-info span {
+    font-weight: bold;
+    color: #3498db;
+}
+
+/* Search Component */
+.search-component {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    background-color: white;
+    border-bottom: 1px solid #ddd;
+    transition: padding 0.5s ease;
+}
+
+.search-component h2 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+}
+
+.search-component.results-hidden .search-results {
+    max-height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+.search-error {
+    padding: 0.5rem;
+    background-color: #fde2e2;
+    color: #e74c3c;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.results-count {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    transition: opacity 0.3s ease, margin 0.3s ease;
+}
+
+.results-count.hiding {
+    opacity: 0;
+    margin: 0;
+}
+
+.person-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    transition: max-height 0.5s ease, opacity 0.5s ease;
+}
+
+.person-cards.hiding {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+}
+
+/* Search relationship fields */
+.relationship-selector {
+    position: relative;
+}
+
+.relationship-search {
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 250px;
+    overflow-y: auto;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 0 0 4px 4px;
+    z-index: 100;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    display: none;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    padding: 0.8rem;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    transition: background 0.2s;
+}
+
+.search-result-item:hover {
+    background-color: #f5f7fa;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.result-avatar {
+    width: 40px;
+    height: 40px;
+    margin-right: 1rem;
+}
+
+.result-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #3498db;
+}
+
+.result-info {
+    flex: 1;
+}
+
+.result-name {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.result-details {
+    font-size: 0.8rem;
+    color: #7f8c8d;
+}
+
+.search-loading,
+.no-results,
+.search-error {
+    padding: 1rem;
+    text-align: center;
+    color: #7f8c8d;
+}
+
+.search-error {
+    color: #e74c3c;
+}

@@ -1,0 +1,209 @@
+/* Person Card */
+.person-card {
+    position: relative;
+    display: flex;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: white;
+    transition: opacity 0.5s ease, transform 0.5s ease, max-height 0.5s ease, padding 0.5s ease, margin 0.5s ease, box-shadow 0.2s;
+    cursor: pointer;
+    max-height: 200px;
+    margin-bottom: 1rem;
+    animation: fadeIn 0.3s ease forwards;
+}
+
+.person-card:not(.adding):hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.person-card.adding {
+    background-color: #34495e;
+    border-color: #2c3e50;
+    color: white;
+    pointer-events: none;
+    cursor: default;
+}
+
+.person-card.in-chart {
+    border-left: 4px solid #3498db;
+    background-color: rgba(52, 152, 219, 0.05);
+}
+
+.adding-indicator {
+    width: 100%;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+}
+
+.adding-spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+.person-card-avatar {
+    width: 80px;
+    min-width: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background-color: #f5f5f5;
+}
+
+.avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar.male {
+    border: 3px solid #3498db;
+}
+
+.avatar.female {
+    border: 3px solid #e84393;
+}
+
+.avatar.neutral {
+    border: 3px solid #95a5a6;
+}
+
+.person-card-info {
+    flex: 1;
+    padding: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.person-name {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #2c3e50;
+}
+
+.person-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.detail {
+    display: flex;
+    font-size: 0.9rem;
+}
+
+.detail-label {
+    color: #7f8c8d;
+    min-width: 65px;
+}
+
+.detail-value {
+    font-weight: 500;
+    color: #34495e;
+}
+
+.person-card-action {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    gap: 0.5rem;
+}
+
+/* Locating Indicator */
+.locating-indicator {
+    width: 100%;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    color: #3498db;
+    font-weight: 500;
+}
+
+.locating-spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(52, 152, 219, 0.3);
+    border-radius: 50%;
+    border-top-color: #3498db;
+    animation: spin 1s ease-in-out infinite;
+}
+
+/* Selected relative person card */
+.selected-relative,
+.selected-relatives {
+    margin-top: 0.5rem;
+    min-height: 40px;
+}
+
+.no-selection {
+    color: #95a5a6;
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+.selected-person,
+.selected-child {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    background-color: #f5f7fa;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.selected-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 0.8rem;
+    object-fit: cover;
+    border: 2px solid #3498db;
+}
+
+.selected-name {
+    flex: 1;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.remove-relative-btn,
+.remove-child-btn {
+    background: none;
+    border: none;
+    color: #e74c3c;
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.remove-relative-btn:hover,
+.remove-child-btn:hover {
+    background-color: rgba(231, 76, 60, 0.1);
+}
+
+.selected-children-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}

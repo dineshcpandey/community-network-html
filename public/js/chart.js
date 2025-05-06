@@ -4,6 +4,7 @@ import { mergeNetworkData, cleanInvalidReferences } from './dataUtils.js';
 import { chartData as appChartData, updateChartDataStore } from './app.js';
 import { fetchNetworkData, updatePersonData } from './api.js';
 import { handleNewRelativeClick, isCurrentlyAddingRelative, resetAddRelativeState } from './addRelative.js';
+import { saveRelationshipsOnSubmit } from './editForm.js';
 
 
 // Global chart instance
@@ -34,8 +35,11 @@ function handleFormSubmission(currentEditPerson) {
         statusMsg.textContent = 'Saving changes...';
         editFormContent.appendChild(statusMsg);
 
-        // Call the API to update the person data
-        return updatePersonData(currentEditPerson.id, currentEditPerson)
+        // Call the API to update the person data, and also save relationships
+        return Promise.all([
+            updatePersonData(currentEditPerson.id, currentEditPerson),
+            saveRelationshipsOnSubmit(currentEditPerson) // Save the relationships
+        ])
             .then(() => {
                 // Update the status message
                 statusMsg.className = 'form-status-message success';
@@ -44,18 +48,6 @@ function handleFormSubmission(currentEditPerson) {
                 // Clear any previously shown success summaries
                 const existingSummaries = editFormContent.querySelectorAll('.update-success-summary');
                 existingSummaries.forEach(summary => summary.remove());
-
-                // Hide the form fields but keep the container visible
-
-
-                // const formContainer = document.querySelector('.f3-form-cont');
-                // console.log("Getting the formContainer ", formContainer)
-                // if (formContainer) {
-                //     formContainer.className = ''
-                //     formContainer.style.display = 'none';
-                //     console.log("set the formcontainer to hidden")
-                // }
-
 
                 const familyForm = document.getElementById('familyForm');
                 console.log("Got the familyForm ", familyForm)
@@ -76,26 +68,46 @@ function handleFormSubmission(currentEditPerson) {
                     currentEditPerson.data.gender === 'F' ? 'Female' : 'Not specified';
 
                 successSummary.innerHTML = `
-                    <h3>Updated Information</h3>
+                <h3>Updated Information</h3>
+                <div class="summary-item">
+                    <span class="summary-label">Name:</span>
+                    <span class="summary-value">${firstName} ${lastName}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Gender:</span>
+                    <span class="summary-value">${gender}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Location:</span>
+                    <span class="summary-value">${location}</span>
+                </div>
+                ${currentEditPerson.data.birthday ? `
                     <div class="summary-item">
-                        <span class="summary-label">Name:</span>
-                        <span class="summary-value">${firstName} ${lastName}</span>
+                        <span class="summary-label">Birthday:</span>
+                        <span class="summary-value">${currentEditPerson.data.birthday}</span>
                     </div>
+                ` : ''}
+                
+                <!-- Display relationship information in the summary -->
+                ${currentEditPerson.rels.father ? `
                     <div class="summary-item">
-                        <span class="summary-label">Gender:</span>
-                        <span class="summary-value">${gender}</span>
+                        <span class="summary-label">Father:</span>
+                        <span class="summary-value">ID: ${currentEditPerson.rels.father}</span>
                     </div>
+                ` : ''}
+                ${currentEditPerson.rels.mother ? `
                     <div class="summary-item">
-                        <span class="summary-label">Location:</span>
-                        <span class="summary-value">${location}</span>
+                        <span class="summary-label">Mother:</span>
+                        <span class="summary-value">ID: ${currentEditPerson.rels.mother}</span>
                     </div>
-                    ${currentEditPerson.data.birthday ? `
-                        <div class="summary-item">
-                            <span class="summary-label">Birthday:</span>
-                            <span class="summary-value">${currentEditPerson.data.birthday}</span>
-                        </div>
-                    ` : ''}
-                `;
+                ` : ''}
+                ${currentEditPerson.rels.spouses && currentEditPerson.rels.spouses.length > 0 ? `
+                    <div class="summary-item">
+                        <span class="summary-label">Spouse:</span>
+                        <span class="summary-value">ID: ${currentEditPerson.rels.spouses[0]}</span>
+                    </div>
+                ` : ''}
+            `;
 
                 // Add a close button
                 const closeBtn = document.createElement('button');
