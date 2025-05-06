@@ -1,7 +1,7 @@
 // Chart functionality
 
 import { mergeNetworkData, cleanInvalidReferences } from './dataUtils.js';
-import { chartData as appChartData, updateChartDataStore } from './app.js';
+import { chartData as appChartData, chartData, updateChartDataStore } from './app.js';
 import { fetchNetworkData, updatePersonData } from './api.js';
 import { handleNewRelativeClick, isCurrentlyAddingRelative, resetAddRelativeState } from './addRelative.js';
 import { saveRelationshipsOnSubmit } from './editForm.js';
@@ -326,7 +326,8 @@ export async function updateChartData(networkData) {
 
         // Update the central store in app.js
         updateChartDataStore(mergedData);
-
+        console.log("Logging from chart.js line 329")
+        console.dir(chartData)
         // Update chart
         f3Chart.updateData(mergedData);
         f3Chart.updateTree();

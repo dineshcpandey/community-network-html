@@ -508,6 +508,8 @@ async function handleAddPersonSubmit(e) {
  * @param {string} newPersonId - New person ID
  */
 async function updateConnectedPeopleRelationships(newPersonId) {
+    console.log("addPerson.js updateConnectedPeopleRelationships ", newPersonId)
+    console.log("selectedRelatives: ", selectRelative)
     const updatePromises = [];
 
     // Update father if selected

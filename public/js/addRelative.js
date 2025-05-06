@@ -237,6 +237,7 @@ function createAddRelativeForm(container, formData, relType) {
  */
 async function handleAddRelativeSubmit(e) {
     e.preventDefault();
+    console.log("Add Relatives.js handleAddRelativeSubmit")
 
     try {
         // Get the form and relationship type
@@ -273,7 +274,8 @@ async function handleAddRelativeSubmit(e) {
         // Important: Use the relationship data that's already in the new relative placeholder
         // This already includes the correct parental relationships from the context
         const rels = currentNewRelativeData.rels || {};
-
+        console.log("Form Data")
+        console.dir(formData)
         // Create the new person object
         const newPersonData = {
             personname: `${formData["first name"]} ${formData["last name"]}`,
@@ -281,7 +283,6 @@ async function handleAddRelativeSubmit(e) {
             gender: formData.gender,
             currentlocation: formData.location,
             // Use the relationship data from the placeholder
-
             fatherid: rels.father || null,
             motherid: rels.mother || null,
             spouseid: rels.spouses && rels.spouses.length > 0 ? rels.spouses[0] : null,
@@ -309,12 +310,19 @@ async function handleAddRelativeSubmit(e) {
             rels: rels // Keep the relationship data from the placeholder
         };
 
+        // IMPORTANT FIX: Update the original person with the permanent ID of the new relative
+        // depending on the relationship type
+        await updateOriginalPersonWithPermanentId(currentOriginalPerson.id, permanentId, relType);
+        console.log("After Calling updateOriginalPersonWithPermanentId", currentOriginalPerson.id)
         // Now update the relationships of all connected people (parents, spouse, etc.)
+        // This was moved after updating the original person to ensure correct order
         await updateConnectedPeopleRelationships(permanentId, rels);
-
+        console.log("After Calling updateConnectedPeopleRelationships", rels)
         // Update chart data with the permanent ID
+        console.log("New Person is ")
+        console.dir(newPerson)
         await updateChartWithNewRelative(newPerson);
-
+        console.log("After Calling updateChartWithNewRelative", newPerson)
         // Show success message
         showSuccessMessage(form.parentNode, newPerson, relType);
 
@@ -346,20 +354,94 @@ async function handleAddRelativeSubmit(e) {
     }
 }
 
+/**
+ * New function to specifically update the original person with the permanent ID
+ * @param {string} originalPersonId - ID of the original person
+ * @param {string} permanentId - Permanent ID of the new relative
+ * @param {string} relType - Relationship type
+ */
+async function updateOriginalPersonWithPermanentId(originalPersonId, permanentId, relType) {
+    try {
+        // Get the original person from chartData
+        const originalPerson = chartData.find(p => p.id === originalPersonId);
+
+        if (!originalPerson) {
+            throw new Error(`Original person with ID ${originalPersonId} not found`);
+        }
+
+        // Clone to avoid direct mutation
+        const updatedPerson = JSON.parse(JSON.stringify(originalPerson));
+
+        // Update the specific relationship based on type
+        switch (relType) {
+            case 'father':
+                updatedPerson.rels.father = permanentId;
+                break;
+            case 'mother':
+                updatedPerson.rels.mother = permanentId;
+                break;
+            case 'spouse':
+                if (!updatedPerson.rels.spouses) updatedPerson.rels.spouses = [];
+                // Remove any old references to the temporary ID if present
+                updatedPerson.rels.spouses = updatedPerson.rels.spouses.filter(id =>
+                    id !== currentNewRelativeData.id // Remove temporary ID
+                );
+                // Add the permanent ID
+                if (!updatedPerson.rels.spouses.includes(permanentId)) {
+                    updatedPerson.rels.spouses.push(permanentId);
+                }
+                break;
+            case 'son':
+            case 'daughter':
+                if (!updatedPerson.rels.children) updatedPerson.rels.children = [];
+                // Remove any old references to the temporary ID if present
+                updatedPerson.rels.children = updatedPerson.rels.children.filter(id =>
+                    id !== currentNewRelativeData.id // Remove temporary ID
+                );
+                // Add the permanent ID
+                if (!updatedPerson.rels.children.includes(permanentId)) {
+                    updatedPerson.rels.children.push(permanentId);
+                }
+                break;
+        }
+
+        console.log(`Updating original person ${originalPersonId} with new ${relType} ID: ${permanentId}`);
+
+        // Update the person in the backend
+        const result = await updatePersonData(originalPersonId, updatedPerson);
+
+        // Update local chart data
+        const existingIndex = chartData.findIndex(p => p.id === originalPersonId);
+        if (existingIndex >= 0) {
+            chartData[existingIndex] = result || updatedPerson;
+        }
+
+        return result;
+    } catch (error) {
+        console.error(`Error updating original person with permanent ID:`, error);
+        throw error;
+    }
+}
+
+
 
 /**
  * Update relationships of connected people
  * @param {string} newPersonId - New person ID
  * @param {Object} relationships - Relationship data from placeholder
  */
+
 async function updateConnectedPeopleRelationships(newPersonId, relationships) {
-    console.log(" updateConnectedPeopleRelationships ", newPersonId, relationships)
+    console.log("Updating connected people relationships for new person:", newPersonId);
+    console.log("Relationship data:", relationships);
+
     const updatePromises = [];
 
-    // Update father if exists in relationships
+    // Update father if this new person is someone's child
     if (relationships.father) {
         const father = chartData.find(p => p.id === relationships.father);
         if (father) {
+            console.log(`Updating father ${father.id} to add child ${newPersonId}`);
             const fatherUpdate = updatePersonRelationship(
                 father,
                 'children',
@@ -369,10 +451,11 @@ async function updateConnectedPeopleRelationships(newPersonId, relationships) {
         }
     }
 
-    // Update mother if exists in relationships
+    // Update mother if this new person is someone's child
     if (relationships.mother) {
         const mother = chartData.find(p => p.id === relationships.mother);
         if (mother) {
+            console.log(`Updating mother ${mother.id} to add child ${newPersonId}`);
             const motherUpdate = updatePersonRelationship(
                 mother,
                 'children',
@@ -382,11 +465,12 @@ async function updateConnectedPeopleRelationships(newPersonId, relationships) {
         }
     }
 
-    // Update spouses if exists in relationships
+    // Update spouses if this new person is someone's spouse
     if (relationships.spouses && relationships.spouses.length > 0) {
         for (const spouseId of relationships.spouses) {
             const spouse = chartData.find(p => p.id === spouseId);
             if (spouse) {
+                console.log(`Updating spouse ${spouse.id} to add spouse ${newPersonId}`);
                 const spouseUpdate = updatePersonRelationship(
                     spouse,
                     'spouses',
@@ -397,8 +481,52 @@ async function updateConnectedPeopleRelationships(newPersonId, relationships) {
         }
     }
 
+    // Update children if this new person is a parent
+    if (relationships.children && relationships.children.length > 0) {
+        // FIX: Get the gender from the right location
+        // First look for the gender in the formData that was used to create the person
+        const newPerson = chartData.find(p => p.id === newPersonId);
+        let gender;
+
+        if (newPerson && newPerson.data && newPerson.data.gender) {
+            // Get gender from the chart data
+            gender = newPerson.data.gender;
+        } else if (currentNewRelativeData && currentNewRelativeData.data && currentNewRelativeData.data.gender) {
+            // Or get it from the current form data if available
+            gender = currentNewRelativeData.data.gender;
+        } else {
+            // Default to male if we can't determine gender (you might want a different default)
+            console.warn("Could not determine gender, defaulting to male");
+            gender = 'M';
+        }
+
+        for (const childId of relationships.children) {
+            const child = chartData.find(p => p.id === childId);
+            if (child) {
+                const relType = gender === 'M' ? 'father' : 'mother';
+                console.log(`Updating child ${child.id} to set ${relType} to ${newPersonId}`);
+                const childUpdate = updatePersonRelationship(
+                    child,
+                    relType,
+                    newPersonId,
+                    true // isSingleValue
+                );
+                updatePromises.push(childUpdate);
+            }
+        }
+    }
+
     // Wait for all updates to complete
-    await Promise.all(updatePromises);
+    const results = await Promise.allSettled(updatePromises);
+
+    // Log any errors
+    results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+            console.error(`Failed to update relationship #${index}:`, result.reason);
+        }
+    });
+
+    return results;
 }
 
 /**
@@ -508,19 +636,64 @@ async function updateOriginalPersonRelationshipsWithPermanentId(originalPerson, 
  * @param {Object} newPerson - The newly created person
  * @returns {Promise<void>}
  */
-async function updateChartWithNewRelative(newPerson) {
-    // Add the new person to the local chart data
-    const existingIndex = chartData.findIndex(p => p.id === newPerson.id);
-    if (existingIndex >= 0) {
-        // Update existing person
-        chartData[existingIndex] = newPerson;
-    } else {
-        // Add new person
-        chartData.push(newPerson);
-    }
 
-    // Update the chart
-    await updateChartData([newPerson]);
+async function updateChartWithNewRelative(newPerson) {
+    try {
+        console.log('Updating chart with new relative:', newPerson);
+
+        // Ensure gender is properly set in the data structure as expected by the chart library
+        if (!newPerson.data.gender && newPerson.data["gender"]) {
+            // Copy gender to the expected property location if it's in a different place
+            newPerson.data.gender = newPerson.data["gender"];
+        }
+
+        // Ensure all required data fields exist
+        if (!newPerson.data) newPerson.data = {};
+        if (!newPerson.rels) newPerson.rels = {};
+
+        // Make sure gender has a default value if not set
+        if (!newPerson.data.gender) {
+            console.warn('Gender not found for new person, defaulting to Male');
+            newPerson.data.gender = 'M';
+        }
+
+        // Validate required fields for chart library
+        const requiredFields = ['first name', 'last name', 'gender', 'avatar'];
+        requiredFields.forEach(field => {
+            if (!newPerson.data[field] && field !== 'avatar') {
+                console.warn(`Missing required field: ${field}, setting default`);
+                newPerson.data[field] = field === 'gender' ? 'M' : '';
+            }
+        });
+
+        // Add default avatar if not provided
+        if (!newPerson.data.avatar) {
+            newPerson.data.avatar = "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg";
+        }
+
+        // Add the new person to the local chart data
+        const existingIndex = chartData.findIndex(p => p.id === newPerson.id);
+        if (existingIndex >= 0) {
+            // Update existing person
+            chartData[existingIndex] = newPerson;
+        } else {
+            // Add new person
+            chartData.push(newPerson);
+        }
+
+        console.log('Person added to chartData, updating chart display');
+
+        // Check the actual structure before updating the chart
+        console.log('New person data structure:', JSON.stringify(newPerson));
+
+        // Update the chart
+        await updateChartData([newPerson]);
+
+        return true;
+    } catch (error) {
+        console.error('Error updating chart with new relative:', error);
+        throw error;
+    }
 }
 
 
@@ -532,27 +705,49 @@ async function updateChartWithNewRelative(newPerson) {
  * @param {string} newPersonId - New person ID
  * @param {boolean} isSingleValue - Whether this is a single value (not array)
  */
+
 async function updatePersonRelationship(person, relType, newPersonId, isSingleValue = false) {
-    // Clone the person to avoid mutations
-    const updatedPerson = JSON.parse(JSON.stringify(person));
+    try {
+        // Convert all IDs to strings for consistency
+        newPersonId = String(newPersonId);
 
-    if (isSingleValue) {
-        // For single-value relationships (father, mother)
-        updatedPerson.rels[relType] = newPersonId;
-    } else {
-        // For array relationships (children, spouses)
-        if (!updatedPerson.rels[relType]) {
-            updatedPerson.rels[relType] = [];
+        // Clone the person to avoid mutations
+        const updatedPerson = JSON.parse(JSON.stringify(person));
+
+        if (isSingleValue) {
+            // For single-value relationships (father, mother)
+            updatedPerson.rels[relType] = newPersonId;
+        } else {
+            // For array relationships (children, spouses)
+            if (!updatedPerson.rels[relType]) {
+                updatedPerson.rels[relType] = [];
+            }
+
+            // Ensure all IDs are strings
+            updatedPerson.rels[relType] = updatedPerson.rels[relType].map(id => String(id));
+
+            if (!updatedPerson.rels[relType].includes(newPersonId)) {
+                updatedPerson.rels[relType].push(newPersonId);
+            }
         }
 
-        if (!updatedPerson.rels[relType].includes(newPersonId)) {
-            updatedPerson.rels[relType].push(newPersonId);
+        // Update person in the backend
+        const result = await updatePersonData(person.id, updatedPerson);
+
+        // Update local chart data
+        const existingIndex = chartData.findIndex(p => p.id === person.id);
+        if (existingIndex >= 0) {
+            chartData[existingIndex] = result || updatedPerson;
         }
+
+        console.log(`Successfully updated ${relType} relationship for person ${person.id} with ${newPersonId}`);
+        return result;
+    } catch (error) {
+        console.error(`Error updating ${relType} relationship:`, error);
+        throw error;
     }
-
-    // Update person in the backend
-    return updatePersonData(person.id, updatedPerson);
 }
+
 
 /**
  * Debounce function for search input
