@@ -107,14 +107,44 @@ export async function updatePersonData(personId, personData) {
             throw new Error(`Update API error: ${response.status}`);
         }
 
-        const data = await response.json();
-        console.log(`Updated person data for ID ${personId}:`, data);
-        return data;
+        // Get the response data - this will be in flat format from the API
+        const flatData = await response.json();
+        console.log(`API returned flat data for ID ${personId}:`, flatData);
+
+        // Convert the flat data to the nested structure needed by the chart
+        const nestedData = {
+            id: flatData.id.toString(),
+            data: {
+                "first name": flatData.personname ? flatData.personname.split(' ')[0] : '',
+                "last name": flatData.personname ? flatData.personname.split(' ').slice(1).join(' ') : '',
+                "gender": flatData.gender || '',
+                "birthday": flatData.birthdate || null,
+                "location": flatData.currentlocation || '',
+                "work": flatData.worksat || '',
+                "avatar": personData.data?.avatar || "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg",
+                "contact": {
+                    "email": flatData.mail_id || '',
+                    "phone": flatData.phone || ''
+                },
+                "nativePlace": flatData.nativeplace || ''
+            },
+            rels: {
+                "father": flatData.fatherid ? flatData.fatherid.toString() : null,
+                "mother": flatData.motherid ? flatData.motherid.toString() : null,
+                "spouses": flatData.spouseid ? [flatData.spouseid.toString()] : [],
+                // Preserve children from the original data since it may not be in the API response
+                "children": personData.rels?.children || []
+            }
+        };
+
+        console.log(`Converted to nested structure for chart library:`, nestedData);
+        return nestedData;
     } catch (error) {
         console.error('Error updating person data:', error);
         throw error;
     }
 }
+
 
 /**
  * Format person data for API
@@ -123,29 +153,37 @@ export async function updatePersonData(personId, personData) {
  */
 
 function formatPersonDataForApi(personData) {
-    // Create a simpler copy to avoid deep cloning overhead
-    const cleanedData = Object.assign({}, personData);
+    // Extract data from the nested structure
+    const firstName = personData.data?.["first name"] || "";
+    const lastName = personData.data?.["last name"] || "";
+    const gender = personData.data?.gender || "";
+    const location = personData.data?.location || "";
+    const birthday = personData.data?.birthday || null;
+    const work = personData.data?.work || null;
 
-    // Extract person's first and last names
-    const firstName = personData.data["first name"] || "";
-    const lastName = personData.data["last name"] || "";
+    // Extract relationship info from the nested structure
+    const rels = personData.rels || {};
+    const fatherId = rels.father || null;
+    const motherId = rels.mother || null;
+    const spouseId = rels.spouses && rels.spouses.length > 0 ? rels.spouses[0] : null;
 
-    // Create the API payload with minimal processing
+    // Create the API payload with all possible fields
     return {
         personname: `${firstName} ${lastName}`.trim(),
-        birthdate: personData.data.birthday || null,
-        gender: personData.data.gender || "",
-        currentlocation: personData.data.location || "",
-        fatherid: personData.rels?.father || null,
-        motherid: personData.rels?.mother || null,
-        spouseid: personData.rels?.spouses?.length > 0 ? personData.rels.spouses[0] : null,
-        worksat: personData.data.work || null,
-        nativeplace: personData.data.nativePlace || null,
-        phone: personData.data.contact?.phone || null,
-        mail_id: personData.data.contact?.email || null,
+        birthdate: birthday,
+        gender: gender,
+        currentlocation: location,
+        fatherid: fatherId,
+        motherid: motherId,
+        spouseid: spouseId,
+        worksat: work,
+        nativeplace: personData.data?.nativePlace || null,
+        phone: personData.data?.contact?.phone || null,
+        mail_id: personData.data?.contact?.email || null,
         living: "Y",
-        data: personData.data,
-        rels: personData.rels
+        // Include the original data structure for reference
+        data: personData.data || {},
+        rels: rels || {}
     };
 }
 
