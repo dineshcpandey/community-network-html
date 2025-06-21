@@ -1,7 +1,8 @@
 // Search functionality updates for the new layout
 import { searchByName, searchByLocation } from './api.js';
 import { getChartInstance, openEditTree, clearCurrentEditPerson } from './chart.js';
-import { showNotification } from './addPerson.js'
+import { showNotification } from './addPerson.js';
+import { isUserAuthenticated, showLoginForm } from './auth.js';
 
 import { chartData, handleNodeSelect, clearChartData } from './app.js';
 
@@ -81,12 +82,6 @@ export function setupSearch(options = {}) {
  * Handle search form submission
  * @param {Event} e - Form submit event
  */
-
-/**
- * Handle search form submission
- * @param {Event} e - Form submit event
- */
-
 async function handleSearch(e) {
     e.preventDefault();
     console.log('Search handler triggered');
@@ -182,96 +177,6 @@ async function handleSearch(e) {
     }
 }
 
-// async function handleSearch(e) {
-//     e.preventDefault();
-//     console.log('Search handler triggered');
-
-//     // Re-get elements to ensure we have the latest references
-//     if (!searchInput) searchInput = document.getElementById('search-input');
-//     if (!searchButton) searchButton = document.getElementById('search-button');
-//     if (!searchError) searchError = document.getElementById('search-error');
-//     if (!resultsCount) resultsCount = document.getElementById('results-count');
-//     if (!personCards) personCards = document.getElementById('person-cards');
-//     if (!searchResultsDropdown) searchResultsDropdown = document.querySelector('.search-results-dropdown');
-
-//     if (!searchInput || !searchButton) {
-//         console.error('Critical search elements not found');
-//         return;
-//     }
-
-//     const searchTerm = searchInput.value.trim();
-//     if (!searchTerm) {
-//         showError('Please enter a search term');
-//         showSearchResults();
-//         return;
-//     }
-
-//     // Get search type
-//     const searchTypeRadio = document.querySelector('input[name="searchType"]:checked');
-//     const searchType = searchTypeRadio ? searchTypeRadio.value : 'name'; // Default to name search
-
-//     console.log(`Performing ${searchType} search for: "${searchTerm}"`);
-
-//     // Update UI state
-//     searchButton.disabled = true;
-//     searchButton.textContent = 'Searching...';
-
-//     if (searchError) searchError.style.display = 'none';
-//     if (personCards) personCards.innerHTML = '';
-//     if (resultsCount) resultsCount.style.display = 'none';
-
-//     try {
-//         // Perform search
-//         let results;
-//         if (searchType === 'name') {
-//             results = await searchByName(searchTerm);
-//         } else {
-//             results = await searchByLocation(searchTerm);
-//         }
-
-//         console.log(`Search returned ${results.length} results`);
-
-//         // Filter out people already in the chart
-//         const existingIds = new Set(chartData.map(person => person.id));
-//         const filteredResults = results.filter(person => !existingIds.has(person.id));
-
-//         // Display results
-//         if (filteredResults.length === 0) {
-//             if (results.length > 0 && results.length !== filteredResults.length) {
-//                 showError(`All ${results.length} results are already in your chart`);
-//             } else {
-//                 showError(`No results found for ${searchType}: "${searchTerm}"`);
-//             }
-//         } else {
-//             if (resultsCount) {
-//                 resultsCount.textContent = `Found ${filteredResults.length} ${filteredResults.length === 1 ? 'person' : 'people'}`;
-//                 resultsCount.style.display = 'block';
-//             }
-
-//             // Create person cards
-//             if (personCards) {
-//                 filteredResults.forEach(person => {
-//                     const card = createPersonCard(person);
-//                     personCards.appendChild(card);
-//                 });
-//             }
-//         }
-
-//         // Show search results dropdown
-//         showSearchResults();
-//     } catch (error) {
-//         console.error('Search error:', error);
-//         showError(`Error searching: ${error.message}`);
-//         showSearchResults();
-//     } finally {
-//         // Reset UI state
-//         if (searchButton) {
-//             searchButton.disabled = false;
-//             searchButton.textContent = 'Search';
-//         }
-//     }
-// }
-
 /**
  * Show the search results dropdown
  */
@@ -325,7 +230,6 @@ function showError(message) {
  * @param {Object} person - Person data
  * @returns {HTMLElement} The card element
  */
-
 function createPersonCard(person, isInChart) {
     // Default avatar image if none is provided
     const defaultAvatar = "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg";
@@ -345,6 +249,9 @@ function createPersonCard(person, isInChart) {
     if (isInChart) {
         card.classList.add('in-chart');
     }
+
+    // Determine if Add button should be auth-restricted
+    const addBtnAuthRequired = !isInChart && !isUserAuthenticated() ? 'data-auth-required="true"' : '';
 
     card.innerHTML = `
         <div class="person-card-avatar">
@@ -386,7 +293,7 @@ function createPersonCard(person, isInChart) {
         </div>
         
         <div class="person-card-action">
-            <button class="${isInChart ? 'locate-in-tree-btn' : 'add-to-tree-btn'}">
+            <button class="${isInChart ? 'locate-in-tree-btn' : 'add-to-tree-btn'}" ${addBtnAuthRequired}>
                 ${isInChart ? 'Show in Tree' : 'Add to Tree'}
             </button>
         </div>
@@ -405,6 +312,13 @@ function createPersonCard(person, isInChart) {
     if (actionButton) {
         actionButton.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent card click
+
+            // Check authentication for adding to tree
+            if (!isInChart && !isUserAuthenticated()) {
+                showAuthRequiredMessage('add family members to the chart');
+                return;
+            }
+
             handlePersonSelection(person, isInChart);
         });
     }
@@ -412,81 +326,37 @@ function createPersonCard(person, isInChart) {
     return card;
 }
 
+/**
+ * Show authentication required message
+ * @param {string} action - The action requiring authentication
+ */
+function showAuthRequiredMessage(action) {
+    showNotification(`You need to log in to ${action}`, 'error');
 
-
-// function createPersonCard(person) {
-//     // Default avatar image if none is provided
-//     const defaultAvatar = "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg";
-
-//     // Format person details for display
-//     const fullName = `${person.data["first name"] || ''} ${person.data["last name"] || ''}`.trim();
-//     const location = person.data.location || 'Unknown location';
-//     const birthday = person.data.birthday || 'No birthday info';
-//     const gender = person.data.gender === 'M' ? 'Male' : person.data.gender === 'F' ? 'Female' : 'Not specified';
-
-//     // Create the card element
-//     const card = document.createElement('div');
-//     card.className = 'person-card';
-//     card.dataset.id = person.id;
-
-//     card.innerHTML = `
-//         <div class="person-card-avatar">
-//             <img 
-//                 src="${person.data.avatar || defaultAvatar}" 
-//                 alt="${fullName}" 
-//                 class="avatar ${person.data.gender === 'M' ? 'male' : person.data.gender === 'F' ? 'female' : 'neutral'}"
-//             />
-//         </div>
-
-//         <div class="person-card-info">
-//             <h3 class="person-name">${fullName}</h3>
-
-//             <div class="person-details">
-//                 <div class="detail">
-//                     <span class="detail-label">Location:</span>
-//                     <span class="detail-value">${location}</span>
-//                 </div>
-
-//                 <div class="detail">
-//                     <span class="detail-label">Gender:</span>
-//                     <span class="detail-value">${gender}</span>
-//                 </div>
-
-//                 ${person.data.birthday ? `
-//                     <div class="detail">
-//                         <span class="detail-label">Birthday:</span>
-//                         <span class="detail-value">${birthday}</span>
-//                     </div>
-//                 ` : ''}
-
-//                 ${person.data.work ? `
-//                     <div class="detail">
-//                         <span class="detail-label">Work:</span>
-//                         <span class="detail-value">${person.data.work}</span>
-//                     </div>
-//                 ` : ''}
-//             </div>
-//         </div>
-
-//         <div class="person-card-action">
-//             <button class="add-to-tree-btn">Add to Tree</button>
-//         </div>
-//     `;
-
-// Add person selection handler
-
+    // Prompt to login after a short delay
+    setTimeout(() => {
+        if (confirm(`Would you like to log in to ${action}?`)) {
+            showLoginForm();
+        }
+    }, 1000);
+}
 
 /**
 * Handle person selection from search results
 * @param {Object} person - The selected person
 * @param {boolean} isInChart - Whether the person is already in chart
 */
-
 function handlePersonSelection(person, isInChart) {
     if (isInChart) {
         // If person is already in chart, focus and highlight them
         highlightPersonInChart(person);
     } else {
+        // For adding to chart, check authentication
+        if (!isUserAuthenticated()) {
+            showAuthRequiredMessage('add family members to the chart');
+            return;
+        }
+
         // Visually update the card to show loading
         const card = document.querySelector(`.person-card[data-id="${person.id}"]`);
         if (card) {
@@ -510,39 +380,6 @@ function handlePersonSelection(person, isInChart) {
         }
     }
 }
-
-
-// function handlePersonSelection() {
-//     if (searchOptions.onPersonSelect) {
-//         // Add 'adding' class for styling
-//         card.classList.add('adding');
-
-//         // Replace card content with loading indicator
-//         card.innerHTML = `
-//             <div class="adding-indicator">
-//                 <div class="adding-spinner"></div>
-//                 <div>Adding to chart...</div>
-//             </div>
-//         `;
-
-//         // Make sure person has a rels object to prevent chart errors
-//         if (!person.rels) {
-//             person.rels = { "spouses": [], "children": [] };
-//         }
-
-//         // Call the selection handler after a short delay
-//         setTimeout(() => {
-//             searchOptions.onPersonSelect(person);
-
-//             // After adding person to the chart, hide all search results
-//             setTimeout(() => {
-//                 clearSearchResults();
-//             }, 1000);
-//         }, 500);
-//     }
-// }
-
-
 
 /**
  * Clear search results with smooth animation
@@ -585,7 +422,6 @@ export function clearSearchResults() {
  * Highlight a person in the family chart
  * @param {Object} person - The person to highlight
  */
-
 function highlightPersonInChart(person) {
     // Get the chart instance
     const chartInstance = getChartInstance();

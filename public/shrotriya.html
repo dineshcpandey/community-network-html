@@ -9,6 +9,7 @@
     <script type="module" src="./family-chart.js"></script>
     <link rel="stylesheet" href="./styles/family-chart.css">
     <link rel="stylesheet" href="./styles/main.css">
+    <link rel="stylesheet" href="./styles/auth.css">
     <script type="module" src="./js/search.js"></script>
 </head>
 
@@ -20,9 +21,11 @@
                 <h1>Family Tree Explorer</h1>
             </div>
             <div class="header-controls">
-                <button id="edit-button" class="control-btn edit-btn">Edit Person</button>
-                <button id="add-person-button" class="control-btn add-person-btn">Add New Person</button>
-                <button id="clear-button" class="control-btn clear-btn">Clear Chart</button>
+                <!-- Auth container will be added here by JavaScript -->
+                <button id="edit-button" class="control-btn edit-btn" data-auth-required="true">Edit Person</button>
+                <button id="add-person-button" class="control-btn add-person-btn" data-auth-required="true">Add New
+                    Person</button>
+                <button id="clear-button" class="control-btn clear-btn" data-auth-required="true">Clear Chart</button>
             </div>
         </header>
 

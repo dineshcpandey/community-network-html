@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Facebook Profile Photo Fetch</title>
+</head>
+
+<body>
+    <button onclick="loginWithFacebook()">Login with Facebook</button>
+    <div id="profile"></div>
+
+    <script>
+        // Load the Facebook SDK
+        window.fbAsyncInit = function () {
+            FB.init({
+                appId: '1025956809293377', // 🔁 Replace with your Facebook App ID
+                cookie: true,
+                xfbml: true,
+                version: 'v19.0' // Use latest Graph API version
+            });
+
+            FB.AppEvents.logPageView();
+        };
+
+        (function (d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) return;
+            js = d.createElement(s); js.id = id;
+            js.src = "https://connect.facebook.net/en_US/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+
+        // Login and fetch profile picture
+        function loginWithFacebook() {
+            FB.login(function (response) {
+                if (response.authResponse) {
+                    FB.api('/me', { fields: 'name, picture.type(large)' }, function (response) {
+                        const profileDiv = document.getElementById('profile');
+                        profileDiv.innerHTML = `
+              <h3>${response.name}</h3>
+              <img src="${response.picture.data.url}" alt="Profile Picture">
+            `;
+                    });
+                } else {
+                    alert('User cancelled login or did not fully authorize.');
+                }
+            }, { scope: 'public_profile,email' });
+        }
+    </script>
+</body>
+
+</html>

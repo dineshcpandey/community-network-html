@@ -1,10 +1,11 @@
 // Chart functionality
 
 import { mergeNetworkData, cleanInvalidReferences } from './dataUtils.js';
-import { chartData as appChartData, chartData, updateChartDataStore } from './app.js';
+import { chartData as appChartData, chartData, updateChartDataStore, showNotification } from './app.js';
 import { fetchNetworkData, updatePersonData } from './api.js';
 import { handleNewRelativeClick, isCurrentlyAddingRelative, resetAddRelativeState } from './addRelative.js';
 import { saveRelationshipsOnSubmit } from './editForm.js';
+import { isUserAuthenticated, showLoginForm } from './auth.js';
 
 
 // Global chart instance
@@ -230,6 +231,12 @@ export async function initializeChart(data, options = {}) {
             .setEditFirst(true)  // Start in edit mode
             .setOnChange(async () => {
                 try {
+                    // Check if user is authenticated
+                    if (!isUserAuthenticated()) {
+                        showNotification("Authentication required to save changes", "error");
+                        throw new Error("Authentication required");
+                    }
+
                     // Use the currentEditPerson variable since the onChange callback doesn't pass datum
                     if (!currentEditPerson) {
                         console.error("Form change handler: No current edit person found");
@@ -274,6 +281,12 @@ export async function initializeChart(data, options = {}) {
 
             // Check if this is a new relative card
             if (d.data._new_rel_data) {
+                // Check authentication before allowing to add relative
+                if (!isUserAuthenticated()) {
+                    showAuthRequiredForFeature('add relatives');
+                    return;
+                }
+
                 // This is a new relative card, handle it with our custom implementation
                 const mainNode = f3Chart.getMainDatum();
                 handleNewRelativeClick(d.data, mainNode);
@@ -302,6 +315,21 @@ export async function initializeChart(data, options = {}) {
         console.error('Error initializing chart:', error);
         throw error;
     }
+}
+
+/**
+ * Show authentication required message for chart features
+ * @param {string} feature - The feature requiring authentication
+ */
+function showAuthRequiredForFeature(feature) {
+    showNotification(`You need to log in to ${feature}`, 'error');
+
+    // Optionally show login form after a delay
+    setTimeout(() => {
+        if (confirm(`Would you like to log in to ${feature}?`)) {
+            showLoginForm();
+        }
+    }, 1000);
 }
 
 /**
@@ -345,6 +373,19 @@ export async function updateChartData(networkData) {
  */
 export function openEditTree(person) {
     console.log("Chart.js openEditTree ", person);
+
+    // Check if user is authenticated before opening edit form
+    if (!isUserAuthenticated()) {
+        showAuthRequiredForFeature('edit family members');
+
+        // Close the edit form if it's open
+        const editForm = document.getElementById('edit-form');
+        if (editForm && editForm.classList.contains('visible')) {
+            editForm.classList.remove('visible');
+        }
+
+        return;
+    }
 
     if (!f3Chart) {
         console.error('Chart not initialized');
@@ -390,6 +431,12 @@ export function openEditTree(person) {
             .setEditFirst(true)  // Start in edit mode
             .setOnChange(async () => {
                 try {
+                    // Check if user is authenticated
+                    if (!isUserAuthenticated()) {
+                        showNotification("Authentication required to save changes", "error");
+                        throw new Error("Authentication required");
+                    }
+
                     // Use the currentEditPerson variable since the onChange callback doesn't pass datum
                     if (!currentEditPerson) {
                         console.error("Form change handler: No current edit person found");

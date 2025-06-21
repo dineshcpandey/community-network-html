@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Facebook Profile Picture Viewer</title>
+</head>
+
+<body>
+    <h2>Enter Facebook User ID</h2>
+    <input type="text" id="fbUserId" placeholder="Enter Facebook User ID" />
+    <button onclick="loadImage()">Load Profile Picture</button>
+
+    <div id="result" style="margin-top: 20px;"></div>
+
+    <script>
+        function loadImage() {
+            const userId = document.getElementById("fbUserId").value.trim();
+            const resultDiv = document.getElementById("result");
+
+            if (!userId) {
+                resultDiv.innerHTML = "<p style='color:red;'>Please enter a valid Facebook user ID.</p>";
+                return;
+            }
+
+            const imgUrl = `https://graph.facebook.com/${userId}/picture?type=large`;
+
+            resultDiv.innerHTML = `
+        <p>Profile Picture:</p>
+        <img src="${imgUrl}" alt="Profile Picture" style="border: 1px solid #ccc; border-radius: 6px;">
+      `;
+        }
+    </script>
+</body>
+
+</html>

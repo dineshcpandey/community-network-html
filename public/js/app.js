@@ -6,8 +6,7 @@ import { fetchInitialData, fetchNetworkData } from './api.js';
 import { setupControlPanel } from './controlPanel.js';
 import { setupEventListeners } from './eventHandlers.js';
 import { showAddPersonForm } from './addPerson.js';
-
-
+import { initAuth, isUserAuthenticated, showLoginForm, logout } from './auth.js';
 
 // Global state
 export let chartData = [];
@@ -29,6 +28,12 @@ export function updateChartDataStore(newData) {
 
 // Initialize the application
 async function initApp() {
+    // Initialize authentication
+    initAuth();
+
+    // Set up auth-related UI
+    setupAuthUI();
+
     // Show loading indicator
     showLoading(true);
 
@@ -56,12 +61,12 @@ async function initApp() {
 
         // Set up control panel
         setupControlPanel({
-            onEditClick: toggleEditForm,
+            onEditClick: handleEditButtonClick,
             onHighlightToggle: toggleHighlightMode,
             onResetClick: resetChart,
             onDownloadClick: downloadChartData,
             onClearClick: clearChartData,
-            onAddPersonClick: addNewPerson
+            onAddPersonClick: handleAddPersonClick
         });
 
         // Set up global event handlers
@@ -79,12 +84,137 @@ async function initApp() {
     }
 }
 
+/**
+ * Set up authentication UI elements
+ */
+function setupAuthUI() {
+    // Create auth UI elements if they don't exist
+    if (!document.getElementById('auth-container')) {
+        // Create auth container in header
+        const headerControls = document.querySelector('.header-controls');
+        if (headerControls) {
+            const authContainer = document.createElement('div');
+            authContainer.id = 'auth-container';
+            authContainer.className = 'auth-buttons';
+            authContainer.innerHTML = `
+                <div id="auth-user-display" class="auth-user-display" style="display: none;">
+                    <span class="user-icon">👤</span>
+                    <span id="username-display"></span>
+                </div>
+                <button id="login-button">Log In</button>
+                <button id="logout-button" style="display: none;">Log Out</button>
+            `;
+
+            // Insert before the first child of header controls
+            headerControls.insertBefore(authContainer, headerControls.firstChild);
+
+            // Add event listeners
+            document.getElementById('login-button').addEventListener('click', showLoginForm);
+            document.getElementById('logout-button').addEventListener('click', handleLogout);
+        }
+
+        // Add auth-required data attribute to edit and add buttons
+        const editButton = document.getElementById('edit-button');
+        const addPersonButton = document.getElementById('add-person-button');
+
+        if (editButton) editButton.setAttribute('data-auth-required', 'true');
+        if (addPersonButton) addPersonButton.setAttribute('data-auth-required', 'true');
+    }
+
+    // Listen for auth state changes
+    document.addEventListener('authStateChanged', handleAuthStateChange);
+}
+
+/**
+ * Handle authentication state change
+ * @param {CustomEvent} event - The auth state change event
+ */
+function handleAuthStateChange(event) {
+    const { isAuthenticated, currentUser } = event.detail;
+
+    // Update username display
+    const usernameDisplay = document.getElementById('username-display');
+    if (usernameDisplay && currentUser) {
+        usernameDisplay.textContent = currentUser.displayName || currentUser.username;
+    }
+
+    // If user was editing and got logged out, close the edit form
+    if (!isAuthenticated && isEditFormVisible) {
+        toggleEditForm();
+    }
+}
+
+/**
+ * Handle logout button click
+ */
+function handleLogout() {
+    logout();
+    showNotification('You have been logged out', 'info');
+}
+
+/**
+ * Handle edit button click with auth check
+ */
+function handleEditButtonClick() {
+    if (isUserAuthenticated()) {
+        toggleEditForm();
+    } else {
+        showAuthRequired('edit family members');
+    }
+}
+
+/**
+ * Handle add person button click with auth check
+ */
+function handleAddPersonClick() {
+    if (isUserAuthenticated()) {
+        addNewPerson();
+    } else {
+        showAuthRequired('add new family members');
+    }
+}
+
+/**
+ * Show authentication required message
+ * @param {string} action - The action requiring authentication
+ */
+function showAuthRequired(action) {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'unauthorized-overlay';
+    overlay.innerHTML = `
+        <h3>Authentication Required</h3>
+        <p>You need to log in to ${action}.</p>
+        <button id="auth-login-button">Log In</button>
+    `;
+
+    // Add to main content area
+    const appMain = document.querySelector('.app-main');
+    if (appMain) {
+        appMain.appendChild(overlay);
+
+        // Add event listener to login button
+        overlay.querySelector('#auth-login-button').addEventListener('click', () => {
+            // Remove overlay
+            overlay.parentNode.removeChild(overlay);
+            // Show login form
+            showLoginForm();
+        });
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+        }, 5000);
+    }
+}
+
 // Handle node selection
 /**
  * Handle node selection
  * @param {Object} node - The selected node
  */
-
 async function handleNodeSelect(node) {
     selectedNode = node;
 
@@ -125,50 +255,17 @@ async function handleNodeSelect(node) {
     }
 }
 
-
-// async function handleNodeSelect(node) {
-//     selectedNode = node;
-
-//     // Update selected node info in UI
-//     const selectedInfo = document.getElementById('selected-info');
-//     const selectedNodeId = document.getElementById('selected-node-id');
-
-//     if (selectedInfo && selectedNodeId) {
-//         selectedInfo.style.display = 'block';
-//         selectedNodeId.textContent = node.id;
-//     }
-
-//     // Clear search results when a node is selected
-//     clearSearchResults();
-
-//     // Fetch network data for this node
-//     showLoading(true);
-//     try {
-//         const networkData = await fetchNetworkData(node.id);
-
-//         // Update chart data with network data
-//         await updateChartData(networkData);
-
-//         // Log the updated chart data size for verification
-//         console.log("app.js: After update, chart data has", chartData.length, "items");
-
-//         updateDataSourceIndicator(`Network data loaded for ID: ${node.id}`);
-//     } catch (error) {
-//         console.error('Error fetching network data:', error);
-//         updateDataSourceIndicator(`Error loading network for ID: ${node.id}`, true);
-//     } finally {
-//         showLoading(false);
-//     }
-// }
-
-
-
-
 /**
  * Handle adding a person from search to the chart
  * @param {Object} person - The person to add
  */
 async function handleAddPersonFromSearch(person) {
+    // Check if user is authenticated
+    if (!isUserAuthenticated()) {
+        showAuthRequired('add family members to the chart');
+        return;
+    }
+
     console.log('Adding person to chart:', person);
 
     // Show loading indicator
@@ -220,18 +317,7 @@ function toggleEditForm() {
     // Check if a node is selected
     if (!selectedNode) {
         // Show a notification to the user
-        const notification = document.createElement('div');
-        notification.className = 'notification error';
-        notification.textContent = 'Please select a person to edit first';
-        document.body.appendChild(notification);
-
-        // Remove the notification after 3 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 3000);
-
+        showNotification('Please select a person to edit first', 'error');
         console.warn('No node selected for editing');
         return;
     }
@@ -254,17 +340,7 @@ function toggleEditForm() {
                 console.error("Error opening edit form:", error);
 
                 // Show error notification
-                const errorNotification = document.createElement('div');
-                errorNotification.className = 'notification error';
-                errorNotification.textContent = 'Error opening edit form';
-                document.body.appendChild(errorNotification);
-
-                // Remove the notification after 3 seconds
-                setTimeout(() => {
-                    if (errorNotification.parentNode) {
-                        errorNotification.parentNode.removeChild(errorNotification);
-                    }
-                }, 3000);
+                showNotification('Error opening edit form', 'error');
 
                 // Reset toggle state
                 isEditFormVisible = false;
@@ -395,15 +471,16 @@ async function resetChart() {
 }
 
 /**
- * Clear all chart data and display an empty state message
- */
-
-
-/**
  * Clear all chart data
  * @param {boolean} showConfirm - Whether to show confirmation dialog
  */
 function clearChartData(showConfirm = true) {
+    // Check if authenticated for destructive action
+    if (showConfirm && !isUserAuthenticated()) {
+        showAuthRequired('clear the chart data');
+        return;
+    }
+
     // Show confirmation dialog if requested
     if (showConfirm && !confirm('Are you sure you want to clear all chart data? This action cannot be undone.')) {
         return; // User canceled
@@ -464,52 +541,13 @@ function clearChartData(showConfirm = true) {
     }
 }
 
-
 /**
  * Create a new person and add them to the chart
  */
-
 function addNewPerson() {
     // Show the new add person modal instead of using prompts
     showAddPersonForm();
 }
-
-// function addNewPerson() {
-//     // Create a new person with a unique ID
-//     const newPersonId = "person-" + Date.now();
-
-//     // Get basic information via prompts
-//     const firstName = prompt("Enter first name:", "New");
-//     if (firstName === null) return; // User canceled
-
-//     const lastName = prompt("Enter last name:", "Person");
-//     if (lastName === null) return; // User canceled
-
-//     const gender = confirm("Is this person male? (OK for male, Cancel for female)") ? "M" : "F";
-
-//     // Create the person object
-//     const newPerson = {
-//         id: newPersonId,
-//         data: {
-//             "first name": firstName || "New",
-//             "last name": lastName || "Person",
-//             "gender": gender,
-//             "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg"
-//         },
-//         rels: {}
-//     };
-
-//     // Add to chart data
-//     chartData.push(newPerson);
-
-//     // Update the chart
-//     updateChartData([newPerson]);
-
-//     // Select the newly added person
-//     handleNodeSelect(newPerson);
-
-//     updateDataSourceIndicator(`Added new person: ${firstName} ${lastName}`);
-// }
 
 // Download chart data as JSON
 function downloadChartData() {
@@ -543,6 +581,25 @@ function updateDataSourceIndicator(message, isError = false) {
     }
 }
 
+/**
+ * Show a notification
+ * @param {string} message - The notification message
+ * @param {string} type - Notification type ('success', 'error', 'info')
+ */
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    // Auto-remove after animation duration
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+}
 
 // Initialize the app when DOM is ready
 document.addEventListener('DOMContentLoaded', initApp);
@@ -559,5 +616,6 @@ export {
     addNewPerson,
     downloadChartData,
     showLoading,
-    updateDataSourceIndicator
+    updateDataSourceIndicator,
+    showNotification
 };

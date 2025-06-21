@@ -4,6 +4,7 @@ import { createNewPerson, updatePersonData } from './api.js';
 import { updateChartData } from './chart.js';
 import { searchByName } from './api.js';
 import { chartData } from './app.js';
+import { isUserAuthenticated, showLoginForm } from './auth.js';
 
 // Global state for selected relatives
 let selectedRelatives = {
@@ -17,6 +18,12 @@ let selectedRelatives = {
  * Show the add person form
  */
 function showAddPersonForm() {
+    // Check if user is authenticated
+    if (!isUserAuthenticated()) {
+        showAuthRequired('add new family members');
+        return;
+    }
+
     // Create modal backdrop
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
@@ -161,6 +168,42 @@ function createModalContent() {
 }
 
 /**
+ * Show authentication required message
+ * @param {string} action - The action requiring authentication
+ */
+function showAuthRequired(action) {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'unauthorized-overlay';
+    overlay.innerHTML = `
+        <h3>Authentication Required</h3>
+        <p>You need to log in to ${action}.</p>
+        <button id="auth-login-button">Log In</button>
+    `;
+
+    // Add to main content area
+    const appMain = document.querySelector('.app-main');
+    if (appMain) {
+        appMain.appendChild(overlay);
+
+        // Add event listener to login button
+        overlay.querySelector('#auth-login-button').addEventListener('click', () => {
+            // Remove overlay
+            overlay.parentNode.removeChild(overlay);
+            // Show login form
+            showLoginForm();
+        });
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+        }, 5000);
+    }
+}
+
+/**
  * Set up event listeners for the add person form
  * @param {HTMLElement} modal - The modal container
  */
@@ -217,6 +260,14 @@ function setupFormEventListeners(modal) {
  * @param {Event} e - Input event
  */
 async function handleRelationshipSearch(e) {
+    // Check if user is still authenticated
+    if (!isUserAuthenticated()) {
+        showNotification("Your session has expired. Please log in again.", "error");
+        closeModal();
+        showAuthRequired('search for relatives');
+        return;
+    }
+
     const input = e.target;
     const searchTerm = input.value.trim();
     const relType = input.dataset.relType;
@@ -412,6 +463,14 @@ function removeChild(childId) {
  */
 async function handleAddPersonSubmit(e) {
     e.preventDefault();
+
+    // Check if user is still authenticated
+    if (!isUserAuthenticated()) {
+        showNotification("Your session has expired. Please log in again.", "error");
+        closeModal();
+        showAuthRequired('add a new person');
+        return;
+    }
 
     const form = e.target;
     const submitBtn = form.querySelector('.submit-btn');
