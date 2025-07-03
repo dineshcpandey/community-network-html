@@ -5,11 +5,11 @@
 let currentUser = null;
 let isAuthenticated = false;
 let userRoles = [];
+let authToken = null;
 
 // Configuration
 const AUTH_STORAGE_KEY = 'family_tree_auth';
-const DEFAULT_ADMIN_USERNAME = 'admin';
-const DEFAULT_ADMIN_PASSWORD = 'admin123'; // In a real app, use a secure password and store hashed passwords
+const AUTH_API_BASE_URL = 'http://localhost:5050/auth';
 
 /**
  * Initialize authentication from local storage if present
@@ -23,12 +23,17 @@ export function initAuth() {
             currentUser = authData.user;
             isAuthenticated = true;
             userRoles = authData.roles || [];
-            console.log('Auth restored from storage for user:', currentUser.username);
+            authToken = authData.token;
+
+            // Verify token is still valid
+            verifyTokenValidity();
+
+            console.log('Auth restored from storage for user:', currentUser.email || currentUser.username);
         }
     } catch (error) {
         console.error('Error initializing auth:', error);
         // Clear potentially corrupted auth data
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+        clearAuthData();
     }
 
     // Update UI based on auth state
@@ -36,29 +41,83 @@ export function initAuth() {
 }
 
 /**
- * Login with username and password
- * @param {string} username - The username
+ * Verify if the stored token is still valid
+ */
+async function verifyTokenValidity() {
+    if (!authToken) return;
+
+    try {
+        const response = await fetch(`${AUTH_API_BASE_URL}/verify`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Token verification failed');
+        }
+
+        const data = await response.json();
+        if (data.valid) {
+            // Token is valid, update user info if provided
+            if (data.user) {
+                currentUser = { ...currentUser, ...data.user };
+            }
+        } else {
+            // Token is invalid, clear auth data
+            clearAuthData();
+        }
+    } catch (error) {
+        console.error('Token verification error:', error);
+        // If verification fails, clear auth data
+        clearAuthData();
+    }
+}
+
+/**
+ * Login with email and password
+ * @param {string} email - The email address
  * @param {string} password - The password
  * @returns {Promise<Object>} The login result
  */
-export async function login(username, password) {
+export async function login(email, password) {
     try {
-        // In a real app, you would make an API call to validate credentials
-        // For this demo, we'll use a simple hardcoded check
-        if (username === DEFAULT_ADMIN_USERNAME && password === DEFAULT_ADMIN_PASSWORD) {
+        // Make API call to backend authentication endpoint
+        const response = await fetch(`${AUTH_API_BASE_URL}/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.token) {
             // Successful login
+            authToken = data.token;
             currentUser = {
-                username: username,
-                displayName: 'Administrator',
-                // Add other user properties as needed
+                email: email,
+                displayName: data.user?.displayName || data.user?.name || email.split('@')[0],
+                id: data.user?.id,
+                ...data.user // Include any other user properties from backend
             };
-            userRoles = ['admin', 'editor']; // Set appropriate roles
+
+            // Set default roles - you can customize this based on your backend response
+            userRoles = data.user?.roles || ['user'];
+            if (data.user?.isAdmin) {
+                userRoles.push('admin');
+            }
+
             isAuthenticated = true;
 
             // Store auth info in localStorage
             const authData = {
                 user: currentUser,
                 roles: userRoles,
+                token: authToken,
                 timestamp: Date.now()
             };
             localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData));
@@ -66,12 +125,12 @@ export async function login(username, password) {
             // Update UI
             updateAuthUI();
 
-            console.log('Login successful for user:', username);
+            console.log('Login successful for user:', email);
             return { success: true, user: currentUser };
         } else {
             // Failed login
-            console.log('Login failed for user:', username);
-            throw new Error('Invalid username or password');
+            console.log('Login failed for user:', email);
+            throw new Error(data.message || 'Invalid email or password');
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -82,19 +141,67 @@ export async function login(username, password) {
 /**
  * Log out the current user
  */
-export function logout() {
+export async function logout() {
+    try {
+        // Call backend logout endpoint if token exists
+        if (authToken) {
+            await fetch(`${AUTH_API_BASE_URL}/logout`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Logout API call failed:', error);
+        // Continue with local logout even if API call fails
+    }
+
     // Clear auth state
+    clearAuthData();
+
+    console.log('User logged out');
+}
+
+/**
+ * Clear all authentication data
+ */
+function clearAuthData() {
     currentUser = null;
     isAuthenticated = false;
     userRoles = [];
+    authToken = null;
 
     // Remove from localStorage
     localStorage.removeItem(AUTH_STORAGE_KEY);
 
     // Update UI
     updateAuthUI();
+}
 
-    console.log('User logged out');
+/**
+ * Get authentication token for API requests
+ * @returns {string|null} The authentication token
+ */
+export function getAuthToken() {
+    return authToken;
+}
+
+/**
+ * Get authentication headers for API requests
+ * @returns {Object} Headers object with authorization
+ */
+export function getAuthHeaders() {
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
+    return headers;
 }
 
 /**
@@ -140,7 +247,7 @@ function updateAuthUI() {
 
         // Update user display if it exists
         if (authUserDisplay) {
-            authUserDisplay.textContent = currentUser.displayName || currentUser.username;
+            authUserDisplay.textContent = currentUser.displayName || currentUser.email;
             authUserDisplay.style.display = 'block';
         }
 
@@ -190,8 +297,8 @@ export function showLoginForm() {
         </div>
         <form id="login-form" class="login-form">
             <div class="form-field">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
             </div>
             <div class="form-field">
                 <label for="password">Password</label>
@@ -200,12 +307,6 @@ export function showLoginForm() {
             <div class="login-message" style="display: none;"></div>
             <div class="login-actions">
                 <button type="submit" class="login-button">Login</button>
-            </div>
-            
-            <div class="demo-credentials">
-                <p>Demo Credentials:</p>
-                <p>Username: admin</p>
-                <p>Password: admin123</p>
             </div>
         </form>
     `;
@@ -234,12 +335,19 @@ function setupLoginFormListeners(modal, backdrop) {
         closeLoginModal(modal, backdrop);
     });
 
+    // Click outside modal to close
+    backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) {
+            closeLoginModal(modal, backdrop);
+        }
+    });
+
     // Form submission
     const form = modal.querySelector('#login-form');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const username = form.querySelector('#username').value;
+        const email = form.querySelector('#email').value;
         const password = form.querySelector('#password').value;
         const message = form.querySelector('.login-message');
         const submitBtn = form.querySelector('.login-button');
@@ -251,7 +359,7 @@ function setupLoginFormListeners(modal, backdrop) {
 
         try {
             // Attempt login
-            await login(username, password);
+            await login(email, password);
 
             // Show success message
             message.textContent = 'Login successful!';
@@ -262,9 +370,10 @@ function setupLoginFormListeners(modal, backdrop) {
             setTimeout(() => {
                 closeLoginModal(modal, backdrop);
             }, 1000);
+
         } catch (error) {
             // Show error message
-            message.textContent = error.message || 'Login failed';
+            message.textContent = error.message || 'Login failed. Please try again.';
             message.className = 'login-message error';
             message.style.display = 'block';
 
@@ -273,12 +382,6 @@ function setupLoginFormListeners(modal, backdrop) {
             submitBtn.textContent = 'Login';
         }
     });
-
-    // Close if clicking outside
-    backdrop.addEventListener('click', () => {
-        closeLoginModal(modal, backdrop);
-    });
-    modal.addEventListener('click', e => e.stopPropagation());
 }
 
 /**
@@ -287,11 +390,79 @@ function setupLoginFormListeners(modal, backdrop) {
  * @param {HTMLElement} backdrop - The backdrop element
  */
 function closeLoginModal(modal, backdrop) {
-    backdrop.classList.remove('visible');
     modal.classList.remove('visible');
+    backdrop.classList.remove('visible');
 
     setTimeout(() => {
-        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
-        if (modal.parentNode) modal.parentNode.removeChild(modal);
+        if (modal.parentNode) {
+            modal.parentNode.removeChild(modal);
+        }
+        if (backdrop.parentNode) {
+            backdrop.parentNode.removeChild(backdrop);
+        }
     }, 300);
+}
+
+/**
+ * Register a new user (if your backend supports registration)
+ * @param {string} email - The email address
+ * @param {string} password - The password
+ * @param {Object} userData - Additional user data
+ * @returns {Promise<Object>} The registration result
+ */
+export async function register(email, password, userData = {}) {
+    try {
+        const response = await fetch(`${AUTH_API_BASE_URL}/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email,
+                password,
+                ...userData
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            console.log('Registration successful for user:', email);
+            return { success: true, user: data.user };
+        } else {
+            throw new Error(data.message || 'Registration failed');
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Request password reset
+ * @param {string} email - The email address
+ * @returns {Promise<Object>} The reset result
+ */
+export async function requestPasswordReset(email) {
+    try {
+        const response = await fetch(`${AUTH_API_BASE_URL}/forgot-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            console.log('Password reset requested for:', email);
+            return { success: true, message: data.message };
+        } else {
+            throw new Error(data.message || 'Password reset request failed');
+        }
+    } catch (error) {
+        console.error('Password reset error:', error);
+        throw error;
+    }
 }
