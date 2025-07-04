@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="./styles/family-chart.css">
     <link rel="stylesheet" href="./styles/main.css">
     <link rel="stylesheet" href="./styles/auth.css">
+    <link rel="stylesheet" href="./styles/search.css">
     <script type="module" src="./js/search.js"></script>
 </head>
 
@@ -30,22 +31,24 @@
         </header>
 
         <!-- Search bar below header -->
-        <!-- Search bar below header -->
         <div class="search-bar">
             <div class="search-container">
-                <div class="search-type">
-                    <label>
-                        <input type="radio" name="searchType" value="name" checked>
-                        Name
-                    </label>
-                    <label>
-                        <input type="radio" name="searchType" value="location">
-                        Location
-                    </label>
-                </div>
-                <form id="search-form" class="search-input-container">
-                    <input type="text" id="search-input" placeholder="Search by name...">
-                    <button type="submit" id="search-button">Search</button>
+                <form id="search-form" class="search-form">
+                    <div class="search-field">
+                        <label for="name-input">Name (optional)</label>
+                        <input type="text" id="name-input" placeholder="Enter person's name...">
+                    </div>
+
+                    <div class="search-field">
+                        <label for="location-input">Location (optional)</label>
+                        <input type="text" id="location-input" placeholder="Enter location..." autocomplete="off">
+                        <div class="location-suggestions" id="location-suggestions"></div>
+                    </div>
+
+                    <div class="search-actions">
+                        <button type="submit" id="search-button" class="search-btn">Search</button>
+                        <button type="button" id="clear-search-btn" class="clear-btn">Clear</button>
+                    </div>
                 </form>
             </div>
 
@@ -58,10 +61,16 @@
 
         <!-- Search results dropdown -->
         <div class="search-results-dropdown" style="display: none;">
-            <div id="search-error" class="search-error" style="display: none;"></div>
-            <div id="results-count" class="results-count" style="display: none;"></div>
-            <div id="person-cards" class="person-cards"></div>
-            <button class="close-results-btn">Close</button>
+            <div class="search-results-container">
+                <div class="search-results-header">
+                    <div id="results-count" class="results-count">0 results found</div>
+                    <button class="close-results-btn" id="close-results-btn">Close</button>
+                </div>
+                <div class="search-results-content">
+                    <div id="search-error" class="search-error" style="display: none;"></div>
+                    <div id="person-cards"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Full width chart area -->

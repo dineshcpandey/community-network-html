@@ -1,14 +1,15 @@
-// Search functionality updates for the new layout
-import { searchByName, searchByLocation } from './api.js';
+// public/js/search.js - Updated search functionality
+import { searchPeople, fetchLocationSuggestions } from './api-utils.js';
 import { getChartInstance, openEditTree, clearCurrentEditPerson } from './chart.js';
 import { showNotification } from './addPerson.js';
 import { isUserAuthenticated, showLoginForm } from './auth.js';
-
 import { chartData, handleNodeSelect, clearChartData } from './app.js';
 
-// Elements
+// Search elements
 let searchForm;
-let searchInput;
+let nameInput;
+let locationInput;
+let locationSuggestions;
 let searchButton;
 let searchError;
 let resultsCount;
@@ -16,22 +17,29 @@ let personCards;
 let searchResultsDropdown;
 let closeResultsBtn;
 
+// Type-ahead state
+let currentSuggestions = [];
+let selectedSuggestionIndex = -1;
+let debounceTimer = null;
+
 // Default options
 let searchOptions = {
     onPersonSelect: null,
 };
 
 /**
- * Set up search functionality
+ * Set up search functionality with name and location fields
  * @param {Object} options - Search options
  */
 export function setupSearch(options = {}) {
     // Merge options
     searchOptions = { ...searchOptions, ...options };
 
-    // Get all elements (doing this at setup time to ensure DOM is ready)
-    searchForm = document.getElementById('search-form') || document.querySelector('.search-container');
-    searchInput = document.getElementById('search-input');
+    // Get DOM elements
+    searchForm = document.getElementById('search-form');
+    nameInput = document.getElementById('name-input');
+    locationInput = document.getElementById('location-input');
+    locationSuggestions = document.getElementById('location-suggestions');
     searchButton = document.getElementById('search-button');
     searchError = document.getElementById('search-error');
     resultsCount = document.getElementById('results-count');
@@ -42,7 +50,9 @@ export function setupSearch(options = {}) {
     // Debug check
     console.log('Search elements found:', {
         searchForm: !!searchForm,
-        searchInput: !!searchInput,
+        nameInput: !!nameInput,
+        locationInput: !!locationInput,
+        locationSuggestions: !!locationSuggestions,
         searchButton: !!searchButton,
         searchError: !!searchError,
         resultsCount: !!resultsCount,
@@ -52,28 +62,53 @@ export function setupSearch(options = {}) {
     });
 
     // Set up event listeners
-    if (searchButton) {
-        searchButton.addEventListener('click', handleSearch);
-        console.log('Search button click handler attached');
-    } else {
-        console.error('Search button not found');
-    }
-
-    if (searchForm && searchForm.tagName === 'FORM') {
+    if (searchForm) {
         searchForm.addEventListener('submit', handleSearch);
         console.log('Search form submit handler attached');
     }
 
-    // Set up radio buttons
-    const radioButtons = document.querySelectorAll('input[name="searchType"]');
-    radioButtons.forEach(radio => {
-        radio.addEventListener('change', handleSearchTypeChange);
-    });
+    if (searchButton) {
+        searchButton.addEventListener('click', handleSearch);
+        console.log('Search button click handler attached');
+    }
+
+    // Set up location type-ahead
+    if (locationInput) {
+        locationInput.addEventListener('input', handleLocationInput);
+        locationInput.addEventListener('keydown', handleLocationKeydown);
+        locationInput.addEventListener('blur', hideSuggestions);
+        console.log('Location input handlers attached');
+    }
 
     // Set up close results button
     if (closeResultsBtn) {
         closeResultsBtn.addEventListener('click', clearSearchResults);
     }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && searchResultsDropdown && searchResultsDropdown.style.display === 'flex') {
+            clearSearchResults();
+        }
+    });
+
+    // Close modal when clicking outside the container
+    if (searchResultsDropdown) {
+        searchResultsDropdown.addEventListener('click', (e) => {
+            if (e.target === searchResultsDropdown) {
+                clearSearchResults();
+            }
+        });
+    }
+
+    // Click outside to hide suggestions
+    document.addEventListener('click', (e) => {
+        if (locationInput && locationSuggestions &&
+            !locationInput.contains(e.target) &&
+            !locationSuggestions.contains(e.target)) {
+            hideSuggestions();
+        }
+    });
 
     console.log('Search component initialized');
 }
@@ -86,82 +121,74 @@ async function handleSearch(e) {
     e.preventDefault();
     console.log('Search handler triggered');
 
-    // Re-get elements to ensure we have the latest references
-    if (!searchInput) searchInput = document.getElementById('search-input');
-    if (!searchButton) searchButton = document.getElementById('search-button');
-    if (!searchError) searchError = document.getElementById('search-error');
-    if (!resultsCount) resultsCount = document.getElementById('results-count');
-    if (!personCards) personCards = document.getElementById('person-cards');
-    if (!searchResultsDropdown) searchResultsDropdown = document.querySelector('.search-results-dropdown');
-
-    if (!searchInput || !searchButton) {
-        console.error('Critical search elements not found');
+    // Check authentication
+    if (!isUserAuthenticated()) {
+        showLoginForm('search for people');
         return;
     }
 
-    const searchTerm = searchInput.value.trim();
-    if (!searchTerm) {
-        showError('Please enter a search term');
+    // Get search values
+    const name = nameInput ? nameInput.value.trim() : '';
+    const location = locationInput ? locationInput.value.trim() : '';
+
+    // Validate input
+    if (!name && !location) {
+        showError('Please enter either a name or location to search');
         showSearchResults();
         return;
     }
 
-    // Get search type
-    const searchTypeRadio = document.querySelector('input[name="searchType"]:checked');
-    const searchType = searchTypeRadio ? searchTypeRadio.value : 'name'; // Default to name search
+    // Update UI
+    if (searchButton) {
+        searchButton.disabled = true;
+        searchButton.textContent = 'Searching...';
+    }
 
-    console.log(`Performing ${searchType} search for: "${searchTerm}"`);
-
-    // Update UI state
-    searchButton.disabled = true;
-    searchButton.textContent = 'Searching...';
-
-    if (searchError) searchError.style.display = 'none';
-    if (personCards) personCards.innerHTML = '';
-    if (resultsCount) resultsCount.style.display = 'none';
+    // Clear previous results
+    clearSearchResults();
 
     try {
-        // Perform search
-        let results;
-        if (searchType === 'name') {
-            results = await searchByName(searchTerm);
-        } else {
-            results = await searchByLocation(searchTerm);
+        console.log(`Searching for name: "${name}", location: "${location}"`);
+
+        const results = await searchPeople(name, location);
+        console.log('Search results:', results);
+
+        // Clear any previous errors
+        if (searchError) {
+            searchError.style.display = 'none';
         }
-
-        console.log(`Search returned ${results.length} results`);
-
-        // Check existing chart IDs
-        const existingIds = new Set(chartData.map(person => person.id));
-
-        // Count people already in the chart
-        const inChartCount = results.filter(person => existingIds.has(person.id)).length;
-
-        // Count new people that can be added
-        const newCount = results.length - inChartCount;
 
         // Display results
         if (results.length === 0) {
-            showError(`No results found for ${searchType}: "${searchTerm}"`);
+            if (resultsCount) {
+                resultsCount.textContent = 'No people found matching your search criteria';
+                resultsCount.style.display = 'block';
+            }
         } else {
-            let statusText = '';
+            // Check which people are already in the chart
+            const existingIds = new Set(chartData.map(person => person.id));
+            const newCount = results.filter(person => !existingIds.has(person.id)).length;
 
-            if (inChartCount > 0 && newCount > 0) {
-                statusText = `Found ${results.length} people: ${inChartCount} already in chart, ${newCount} can be added`;
-            } else if (inChartCount > 0) {
-                statusText = `Found ${inChartCount} ${inChartCount === 1 ? 'person' : 'people'} already in your chart`;
+            let statusText;
+            if (newCount === 0) {
+                statusText = `Found ${results.length} ${results.length === 1 ? 'person' : 'people'} already in your chart`;
             } else {
                 statusText = `Found ${newCount} ${newCount === 1 ? 'person' : 'people'} to add to your chart`;
             }
 
-            resultsCount.textContent = statusText;
-            resultsCount.style.display = 'block';
+            if (resultsCount) {
+                resultsCount.textContent = statusText;
+                resultsCount.style.display = 'block';
+            }
 
             // Create person cards for all results
-            results.forEach(person => {
-                const card = createPersonCard(person, existingIds.has(person.id));
-                personCards.appendChild(card);
-            });
+            if (personCards) {
+                personCards.innerHTML = '';
+                results.forEach(person => {
+                    const card = createPersonCard(person, existingIds.has(person.id));
+                    personCards.appendChild(card);
+                });
+            }
         }
 
         // Show search results dropdown
@@ -172,36 +199,176 @@ async function handleSearch(e) {
         showSearchResults();
     } finally {
         // Reset UI state
-        searchButton.disabled = false;
-        searchButton.textContent = 'Search';
+        if (searchButton) {
+            searchButton.disabled = false;
+            searchButton.textContent = 'Search';
+        }
     }
+}
+
+/**
+ * Handle location input for type-ahead functionality
+ * @param {Event} e - Input event
+ */
+async function handleLocationInput(e) {
+    const query = e.target.value.trim();
+
+    // Clear previous timer
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+
+    // Debounce the API call
+    debounceTimer = setTimeout(async () => {
+        if (query.length >= 2) {
+            try {
+                const suggestions = await fetchLocationSuggestions(query);
+                showSuggestions(suggestions);
+            } catch (error) {
+                console.error('Location suggestions error:', error);
+                hideSuggestions();
+            }
+        } else {
+            hideSuggestions();
+        }
+    }, 300);
+}
+
+/**
+ * Handle keyboard navigation in location suggestions
+ * @param {Event} e - Keydown event
+ */
+function handleLocationKeydown(e) {
+    if (!currentSuggestions.length) return;
+
+    switch (e.key) {
+        case 'ArrowDown':
+            e.preventDefault();
+            selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, currentSuggestions.length - 1);
+            updateSuggestionSelection();
+            break;
+
+        case 'ArrowUp':
+            e.preventDefault();
+            selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
+            updateSuggestionSelection();
+            break;
+
+        case 'Enter':
+            e.preventDefault();
+            if (selectedSuggestionIndex >= 0) {
+                selectSuggestion(currentSuggestions[selectedSuggestionIndex]);
+            }
+            break;
+
+        case 'Escape':
+            hideSuggestions();
+            break;
+    }
+}
+
+/**
+ * Show location suggestions
+ * @param {Array} suggestions - Array of location strings
+ */
+function showSuggestions(suggestions) {
+    if (!locationSuggestions) return;
+
+    currentSuggestions = suggestions;
+    selectedSuggestionIndex = -1;
+
+    if (suggestions.length === 0) {
+        locationSuggestions.innerHTML = '<div class="no-suggestions">No locations found</div>';
+        locationSuggestions.style.display = 'block';
+        return;
+    }
+
+    locationSuggestions.innerHTML = suggestions.map((suggestion, index) =>
+        `<div class="location-suggestion" data-index="${index}">${suggestion}</div>`
+    ).join('');
+
+    // Add click handlers to suggestions
+    locationSuggestions.querySelectorAll('.location-suggestion').forEach((el, index) => {
+        el.addEventListener('click', () => selectSuggestion(suggestions[index]));
+    });
+
+    locationSuggestions.style.display = 'block';
+}
+
+/**
+ * Hide location suggestions
+ */
+function hideSuggestions() {
+    setTimeout(() => {
+        if (locationSuggestions) {
+            locationSuggestions.style.display = 'none';
+        }
+        currentSuggestions = [];
+        selectedSuggestionIndex = -1;
+    }, 200);
+}
+
+/**
+ * Update suggestion selection highlighting
+ */
+function updateSuggestionSelection() {
+    if (!locationSuggestions) return;
+
+    const suggestionElements = locationSuggestions.querySelectorAll('.location-suggestion');
+    suggestionElements.forEach((el, index) => {
+        el.classList.toggle('selected', index === selectedSuggestionIndex);
+    });
+}
+
+/**
+ * Select a location suggestion
+ * @param {string} suggestion - Selected location
+ */
+function selectSuggestion(suggestion) {
+    if (locationInput) {
+        locationInput.value = suggestion;
+        locationInput.focus();
+    }
+    hideSuggestions();
 }
 
 /**
  * Show the search results dropdown
  */
 function showSearchResults() {
-    if (!searchResultsDropdown) {
-        searchResultsDropdown = document.querySelector('.search-results-dropdown');
-    }
-
     if (searchResultsDropdown) {
         searchResultsDropdown.style.display = 'flex';
-    } else {
-        console.error('Search results dropdown not found');
+        // Prevent body scroll when modal is open
+        document.body.classList.add('modal-open');
+
+        // Focus management for accessibility
+        const closeBtn = searchResultsDropdown.querySelector('.close-results-btn');
+        if (closeBtn) {
+            closeBtn.focus();
+        }
     }
 }
 
 /**
- * Handle search type change
- * @param {Event} e - Radio button change event
+ * Clear search results
  */
-function handleSearchTypeChange(e) {
-    const searchType = e.target.value;
-    if (!searchInput) searchInput = document.getElementById('search-input');
+export function clearSearchResults() {
+    if (searchResultsDropdown) {
+        searchResultsDropdown.style.display = 'none';
+        // Re-enable body scroll
+        document.body.classList.remove('modal-open');
+    }
 
-    if (searchInput) {
-        searchInput.placeholder = `Search by ${searchType}...`;
+    if (searchError) {
+        searchError.style.display = 'none';
+    }
+
+    if (resultsCount) {
+        resultsCount.style.display = 'none';
+    }
+
+    if (personCards) {
+        personCards.innerHTML = '';
     }
 }
 
@@ -210,16 +377,13 @@ function handleSearchTypeChange(e) {
  * @param {string} message - Error message
  */
 function showError(message) {
-    if (!searchError) searchError = document.getElementById('search-error');
-    if (!resultsCount) resultsCount = document.getElementById('results-count');
-
     if (searchError) {
         searchError.textContent = message;
         searchError.style.display = 'block';
+    }
 
-        if (resultsCount) {
-            resultsCount.style.display = 'none';
-        }
+    if (resultsCount) {
+        resultsCount.style.display = 'none';
     }
 
     console.error('Search error:', message);
@@ -228,98 +392,58 @@ function showError(message) {
 /**
  * Create a person card element
  * @param {Object} person - Person data
+ * @param {boolean} isInChart - Whether person is already in chart
  * @returns {HTMLElement} The card element
  */
 function createPersonCard(person, isInChart) {
-    // Default avatar image if none is provided
-    const defaultAvatar = "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg";
-
-    // Format person details for display
-    const fullName = `${person.data["first name"] || ''} ${person.data["last name"] || ''}`.trim();
-    const location = person.data.location || 'Unknown location';
-    const birthday = person.data.birthday || 'No birthday info';
-    const gender = person.data.gender === 'M' ? 'Male' : person.data.gender === 'F' ? 'Female' : 'Not specified';
-
-    // Create the card element
     const card = document.createElement('div');
     card.className = 'person-card';
-    card.dataset.id = person.id;
+    card.dataset.personId = person.id;
 
-    // Add a class if the person is already in chart
-    if (isInChart) {
-        card.classList.add('in-chart');
-    }
-
-    // Determine if Add button should be auth-restricted
-    const addBtnAuthRequired = !isInChart && !isUserAuthenticated() ? 'data-auth-required="true"' : '';
+    // Format person details
+    const name = person.personname || 'Unknown';
+    const currentLocation = person.currentlocation || '';
+    const nativePlace = person.nativeplace || '';
+    const gender = person.gender === 'M' ? 'Male' : person.gender === 'F' ? 'Female' : 'Unknown';
+    const birthDate = person.birthdate ? new Date(person.birthdate).toLocaleDateString() : '';
 
     card.innerHTML = `
-        <div class="person-card-avatar">
-            <img 
-                src="${person.data.avatar || defaultAvatar}" 
-                alt="${fullName}" 
-                class="avatar ${person.data.gender === 'M' ? 'male' : person.data.gender === 'F' ? 'female' : 'neutral'}"
-            />
+        <div class="person-header">
+            <h3>${name}</h3>
+            ${isInChart ? '<span class="in-chart-badge">In Chart</span>' : ''}
         </div>
-        
-        <div class="person-card-info">
-            <h3 class="person-name">${fullName}</h3>
-            
-            <div class="person-details">
-                <div class="detail">
-                    <span class="detail-label">Location:</span>
-                    <span class="detail-value">${location}</span>
-                </div>
-                
-                <div class="detail">
-                    <span class="detail-label">Gender:</span>
-                    <span class="detail-value">${gender}</span>
-                </div>
-                
-                ${person.data.birthday ? `
-                    <div class="detail">
-                        <span class="detail-label">Birthday:</span>
-                        <span class="detail-value">${birthday}</span>
-                    </div>
-                ` : ''}
-                
-                ${person.data.work ? `
-                    <div class="detail">
-                        <span class="detail-label">Work:</span>
-                        <span class="detail-value">${person.data.work}</span>
-                    </div>
-                ` : ''}
-            </div>
+        <div class="person-details">
+            ${gender ? `<div><strong>Gender:</strong> ${gender}</div>` : ''}
+            ${currentLocation ? `<div><strong>Current Location:</strong> ${currentLocation}</div>` : ''}
+            ${nativePlace ? `<div><strong>Native Place:</strong> ${nativePlace}</div>` : ''}
+            ${birthDate ? `<div><strong>Birth Date:</strong> ${birthDate}</div>` : ''}
+            ${person.phone ? `<div><strong>Phone:</strong> ${person.phone}</div>` : ''}
+            ${person.mail_id ? `<div><strong>Email:</strong> ${person.mail_id}</div>` : ''}
         </div>
-        
-        <div class="person-card-action">
-            <button class="${isInChart ? 'locate-in-tree-btn' : 'add-to-tree-btn'}" ${addBtnAuthRequired}>
-                ${isInChart ? 'Show in Tree' : 'Add to Tree'}
-            </button>
+        <div class="person-actions">
+            ${!isInChart ? `<button class="add-to-chart-btn" data-person-id="${person.id}">Add to Chart</button>` : ''}
+            <button class="view-details-btn" data-person-id="${person.id}">View Details</button>
         </div>
     `;
 
-    // Add click handler to the entire card
-    card.addEventListener('click', (e) => {
-        // Only respond to clicks outside buttons
-        if (!e.target.closest('button')) {
-            handlePersonSelection(person, isInChart);
-        }
-    });
+    // Add event listeners
+    const addToChartBtn = card.querySelector('.add-to-chart-btn');
+    const viewDetailsBtn = card.querySelector('.view-details-btn');
 
-    // Add button click handler
-    const actionButton = card.querySelector(isInChart ? '.locate-in-tree-btn' : '.add-to-tree-btn');
-    if (actionButton) {
-        actionButton.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent card click
-
-            // Check authentication for adding to tree
-            if (!isInChart && !isUserAuthenticated()) {
-                showAuthRequiredMessage('add family members to the chart');
-                return;
+    if (addToChartBtn) {
+        addToChartBtn.addEventListener('click', () => {
+            if (searchOptions.onPersonSelect) {
+                searchOptions.onPersonSelect(person);
+            } else {
+                handleNodeSelect(person);
             }
+        });
+    }
 
-            handlePersonSelection(person, isInChart);
+    if (viewDetailsBtn) {
+        viewDetailsBtn.addEventListener('click', () => {
+            // Handle view details - you can integrate with your existing chart functionality
+            console.log('View details for person:', person.id);
         });
     }
 
@@ -327,128 +451,14 @@ function createPersonCard(person, isInChart) {
 }
 
 /**
- * Show authentication required message
- * @param {string} action - The action requiring authentication
+ * Clear search inputs
  */
-function showAuthRequiredMessage(action) {
-    showNotification(`You need to log in to ${action}`, 'error');
-
-    // Prompt to login after a short delay
-    setTimeout(() => {
-        if (confirm(`Would you like to log in to ${action}?`)) {
-            showLoginForm();
-        }
-    }, 1000);
+export function clearSearch() {
+    if (nameInput) nameInput.value = '';
+    if (locationInput) locationInput.value = '';
+    clearSearchResults();
+    hideSuggestions();
 }
 
-/**
-* Handle person selection from search results
-* @param {Object} person - The selected person
-* @param {boolean} isInChart - Whether the person is already in chart
-*/
-function handlePersonSelection(person, isInChart) {
-    if (isInChart) {
-        // If person is already in chart, focus and highlight them
-        highlightPersonInChart(person);
-    } else {
-        // For adding to chart, check authentication
-        if (!isUserAuthenticated()) {
-            showAuthRequiredMessage('add family members to the chart');
-            return;
-        }
-
-        // Visually update the card to show loading
-        const card = document.querySelector(`.person-card[data-id="${person.id}"]`);
-        if (card) {
-            card.classList.add('adding');
-            card.innerHTML = `
-                <div class="adding-indicator">
-                    <div class="adding-spinner"></div>
-                    <div>Adding to chart...</div>
-                </div>
-            `;
-        }
-
-        // Make sure person has a rels object
-        if (!person.rels) {
-            person.rels = { "spouses": [], "children": [] };
-        }
-
-        // Use the handler that properly fetches network data
-        if (searchOptions.onPersonSelect) {
-            searchOptions.onPersonSelect(person);
-        }
-    }
-}
-
-/**
- * Clear search results with smooth animation
- */
-export function clearSearchResults() {
-    if (!searchResultsDropdown) {
-        searchResultsDropdown = document.querySelector('.search-results-dropdown');
-    }
-
-    if (!searchResultsDropdown) return;
-
-    // Hide the dropdown
-    searchResultsDropdown.style.display = 'none';
-
-    // Reset the elements
-    if (!personCards) personCards = document.getElementById('person-cards');
-    if (personCards) {
-        personCards.innerHTML = '';
-    }
-
-    if (!resultsCount) resultsCount = document.getElementById('results-count');
-    if (resultsCount) {
-        resultsCount.style.display = 'none';
-    }
-
-    if (!searchError) searchError = document.getElementById('search-error');
-    if (searchError) {
-        searchError.style.display = 'none';
-    }
-
-    // Clear the search input
-    if (!searchInput) searchInput = document.getElementById('search-input');
-    if (searchInput) {
-        searchInput.value = '';
-    }
-}
-
-
-/**
- * Highlight a person in the family chart
- * @param {Object} person - The person to highlight
- */
-function highlightPersonInChart(person) {
-    // Get the chart instance
-    const chartInstance = getChartInstance();
-    if (!chartInstance || !chartInstance.chart) {
-        console.error('Chart instance not found');
-        showNotification('Error finding chart instance', 'error');
-        return;
-    }
-
-    try {
-        // Show a notification
-        showNotification(`Showing ${person.data["first name"]} ${person.data["last name"]} in the chart`, 'info');
-
-        // Clear search results
-        clearSearchResults();
-
-        // Set this as the main node
-        chartInstance.chart.updateMainId(person.id);
-        chartInstance.chart.updateTree({
-            tree_position: 'fit',
-            transition_time: 1000
-        });
-
-        // Select the node
-        handleNodeSelect(person);
-    } catch (error) {
-        console.error('Error highlighting person in chart:', error);
-        showNotification('Error highlighting person in chart', 'error');
-    }
-}
+// Export for use in other modules
+export { searchPeople, fetchLocationSuggestions };

@@ -305,3 +305,66 @@ export async function createMarriage(marriageData) {
         throw error;
     }
 }
+
+// public/js/api-utils.js (Updated sections)
+
+/**
+ * Search for people by name and/or location (either can be blank)
+ * @param {string} name - Name to search for (optional)
+ * @param {string} location - Location to search for (optional)
+ * @returns {Promise<Array>} Search results
+ */
+export async function searchPeople(name = '', location = '') {
+    try {
+        const params = new URLSearchParams();
+
+        if (name && name.trim() !== '') {
+            params.append('name', name.trim());
+        }
+
+        if (location && location.trim() !== '') {
+            params.append('location', location.trim());
+        }
+
+        const response = await makeAuthenticatedRequest(`/api/search?${params.toString()}`);
+
+        if (!response.ok) {
+            throw new Error(`Search API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log(`Search results for name "${name}" and location "${location}":`, data.length, 'items');
+        return data;
+    } catch (error) {
+        console.error('Error searching people:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get location suggestions for type-ahead functionality
+ * @param {string} query - Search query for locations
+ * @returns {Promise<Array>} Array of location names
+ */
+export async function fetchLocationSuggestions(query = '') {
+    try {
+        const params = new URLSearchParams();
+
+        if (query && query.trim() !== '') {
+            params.append('query', query.trim());
+        }
+
+        const response = await makeAuthenticatedRequest(`/api/search/locations?${params.toString()}`);
+
+        if (!response.ok) {
+            throw new Error(`Location API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log(`Location suggestions for query "${query}":`, data.length, 'items');
+        return data;
+    } catch (error) {
+        console.error('Error fetching location suggestions:', error);
+        throw error;
+    }
+}
