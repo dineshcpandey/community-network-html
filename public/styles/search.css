@@ -1,4 +1,9 @@
-/* styles/search.css - Search module styles */
+/* styles/search.css - Complete search module styles */
+
+/* Reset and base styles */
+* {
+    box-sizing: border-box;
+}
 
 /* Search form layout */
 .search-form {
@@ -123,91 +128,9 @@
     font-size: 14px;
 }
 
-/* Person card enhancements */
-.person-card {
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
-    background: white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: box-shadow 0.3s ease;
-}
-
-.person-card:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.person-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.person-header h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: #212529;
-}
-
-.in-chart-badge {
-    background: #28a745;
-    color: white;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.person-details {
-    color: #6c757d;
-    font-size: 14px;
-    line-height: 1.4;
-    margin-bottom: 10px;
-}
-
-.person-details div {
-    margin-bottom: 4px;
-}
-
-.person-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.add-to-chart-btn,
-.view-details-btn {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.add-to-chart-btn {
-    background: #007bff;
-    color: white;
-}
-
-.add-to-chart-btn:hover {
-    background: #0056b3;
-}
-
-.view-details-btn {
-    background: #f8f9fa;
-    color: #495057;
-    border: 1px solid #e9ecef;
-}
-
-.view-details-btn:hover {
-    background: #e9ecef;
-}
-
-/* Search results enhancements */
+/* Search results modal - CRITICAL: This overrides main.css */
 .search-results-dropdown {
+    /* Force modal positioning */
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -217,12 +140,27 @@
     height: 100vh !important;
     margin: 0 !important;
     padding: 0 !important;
+    transform: none !important;
+
+    /* Modal appearance */
     background: rgba(0, 0, 0, 0.5) !important;
-    display: flex !important;
+    z-index: 9999 !important;
+
+    /* Centering */
+    display: none !important;
+    /* Hidden by default */
     justify-content: center !important;
     align-items: center !important;
-    z-index: 9999 !important;
-    box-sizing: border-box !important;
+
+    /* Animation */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* When modal is shown */
+.search-results-dropdown[style*="flex"] {
+    display: flex !important;
+    opacity: 1;
 }
 
 .search-results-container {
@@ -258,9 +196,17 @@
 
 #person-cards {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
-    gap: 15px !important;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
+    gap: 20px !important;
     width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Ensure person cards fill the grid properly */
+.search-results-dropdown #person-cards .person-card {
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .search-error {
@@ -296,75 +242,126 @@
     background: #5a6268;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-    .search-form {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .search-field {
-        min-width: 100%;
-    }
-
-    .search-actions {
-        justify-content: center;
-    }
-
-    .person-actions {
-        flex-direction: column;
-    }
-
-    .add-to-chart-btn,
-    .view-details-btn {
-        width: 100%;
-        text-align: center;
-    }
-
-    .search-results-dropdown {
-        padding: 10px;
-        align-items: flex-start;
-        padding-top: 20px;
-    }
-
-    .search-results-container {
-        max-width: calc(100vw - 20px);
-        max-height: calc(100vh - 40px);
-        width: 100%;
-        margin: 0;
-    }
-
-    .search-results-header {
-        padding: 15px;
-        flex-direction: column;
-        gap: 10px;
-        align-items: stretch;
-    }
-
-    .search-results-content {
-        padding: 15px;
-        max-height: calc(100vh - 140px);
-    }
-
-    #person-cards {
-        grid-template-columns: 1fr;
-    }
-
-    .person-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-}
-
-/* Additional positioning fixes */
-.search-results-dropdown * {
-    box-sizing: border-box;
-}
-
-.app,
-.app-main {
+/* Person card styles */
+.search-results-dropdown .person-card {
+    border: 1px solid #e9ecef !important;
+    border-radius: 8px !important;
+    padding: 20px !important;
+    margin-bottom: 0 !important;
+    background: white !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
     position: relative !important;
+    overflow: hidden !important;
+}
+
+.search-results-dropdown .person-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    transform: translateY(-2px) !important;
+}
+
+.search-results-dropdown .person-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    margin-bottom: 15px !important;
+}
+
+.search-results-dropdown .person-header h3 {
+    margin: 0 !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    color: #212529 !important;
+    line-height: 1.2 !important;
+}
+
+.search-results-dropdown .in-chart-badge {
+    background: #28a745 !important;
+    color: white !important;
+    padding: 4px 8px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+}
+
+.search-results-dropdown .person-details {
+    color: #6c757d !important;
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+    margin-bottom: 20px !important;
+}
+
+.search-results-dropdown .person-details div {
+    margin-bottom: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.search-results-dropdown .person-details strong {
+    color: #495057 !important;
+    font-weight: 600 !important;
+    min-width: 120px !important;
+    margin-right: 8px !important;
+}
+
+.search-results-dropdown .person-actions {
+    display: flex !important;
+    gap: 12px !important;
+    margin-top: 15px !important;
+}
+
+.search-results-dropdown .add-to-chart-btn,
+.search-results-dropdown .view-details-btn {
+    padding: 10px 20px !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 100px !important;
+}
+
+.search-results-dropdown .add-to-chart-btn {
+    background: #007bff !important;
+    color: white !important;
+}
+
+.search-results-dropdown .add-to-chart-btn:hover {
+    background: #0056b3 !important;
+    transform: translateY(-1px) !important;
+}
+
+.search-results-dropdown .view-details-btn {
+    background: #f8f9fa !important;
+    color: #495057 !important;
+    border: 1px solid #e9ecef !important;
+}
+
+.search-results-dropdown .view-details-btn:hover {
+    background: #e9ecef !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Additional card styling for better visual hierarchy */
+.search-results-dropdown .person-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    border-radius: 8px 8px 0 0;
+}
+
+.search-results-dropdown .person-card.in-chart::before {
+    background: linear-gradient(90deg, #28a745, #20c997);
 }
 
 /* Prevent body scroll when modal is open */
@@ -372,39 +369,9 @@ body.modal-open {
     overflow: hidden !important;
 }
 
-
-/* Mobile responsive fixes */
-@media (max-width: 768px) {
-    .search-results-container {
-        width: 95vw !important;
-        max-height: 90vh !important;
-    }
-
-    .search-results-content {
-        max-height: calc(90vh - 80px) !important;
-    }
-
-    #person-cards {
-        grid-template-columns: 1fr !important;
-    }
-}
-
-/* Search loading state */
-.search-loading {
-    padding: 8px 12px;
-    color: #6c757d;
-    font-style: italic;
-    font-size: 14px;
-    text-align: center;
-}
-
 /* Animation for suggestions */
 .location-suggestions {
     animation: slideDown 0.2s ease-in-out;
-}
-
-.search-results-dropdown {
-    animation: fadeIn 0.3s ease-in-out;
 }
 
 @keyframes slideDown {
@@ -416,16 +383,6 @@ body.modal-open {
     to {
         opacity: 1;
         transform: translateY(0);
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
     }
 }
 
@@ -444,16 +401,6 @@ body.modal-open {
     font-style: italic;
 }
 
-/* Person card hover effects */
-.person-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.person-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
 /* Button focus states */
 .search-btn:focus,
 .clear-btn:focus,
@@ -467,4 +414,133 @@ body.modal-open {
 /* Search field focus indicators */
 .search-field input:focus+.location-suggestions {
     border-color: #007bff;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .search-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-field {
+        min-width: 100%;
+    }
+
+    .search-actions {
+        justify-content: center;
+    }
+
+    .search-results-container {
+        width: 95vw !important;
+        max-height: 90vh !important;
+        margin: 10px !important;
+    }
+
+    .search-results-content {
+        padding: 15px !important;
+        max-height: calc(90vh - 80px) !important;
+    }
+
+    .search-results-header {
+        padding: 15px !important;
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    #person-cards {
+        gap: 15px !important;
+    }
+
+    .search-results-dropdown .person-card {
+        padding: 15px !important;
+        flex-direction: column !important;
+        text-align: center !important;
+        min-height: auto !important;
+        gap: 15px !important;
+    }
+
+    .search-results-dropdown .person-avatar {
+        width: 60px !important;
+        height: 60px !important;
+        align-self: center !important;
+    }
+
+    .search-results-dropdown .person-info {
+        align-items: center !important;
+        text-align: center !important;
+    }
+
+    .search-results-dropdown .person-header {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 8px !important;
+        text-align: center !important;
+    }
+
+    .search-results-dropdown .person-header h3 {
+        font-size: 18px !important;
+    }
+
+    .search-results-dropdown .person-details {
+        grid-template-columns: 1fr !important;
+        text-align: center !important;
+    }
+
+    .search-results-dropdown .person-details .detail-item {
+        justify-content: center !important;
+    }
+
+    .search-results-dropdown .person-actions {
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    .search-results-dropdown .add-to-chart-btn,
+    .search-results-dropdown .view-details-btn {
+        width: 100% !important;
+        min-width: auto !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .search-results-dropdown .person-card {
+        padding: 12px !important;
+        gap: 12px !important;
+    }
+
+    .search-results-dropdown .person-avatar {
+        width: 50px !important;
+        height: 50px !important;
+    }
+
+    .search-results-dropdown .person-header h3 {
+        font-size: 16px !important;
+    }
+
+    .search-results-dropdown .person-details {
+        font-size: 13px !important;
+    }
+}
+
+/* Additional CSS to override main.css conflicts */
+.search-results-dropdown * {
+    box-sizing: border-box;
+}
+
+/* Override any conflicting styles from main.css */
+.search-results-dropdown {
+    /* These properties override main.css */
+    max-width: none !important;
+    max-height: none !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    overflow-y: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
 }

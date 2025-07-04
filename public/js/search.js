@@ -1,4 +1,4 @@
-// public/js/search.js - Updated search functionality
+// public/js/search.js - Fixed search functionality
 import { searchPeople, fetchLocationSuggestions } from './api-utils.js';
 import { getChartInstance, openEditTree, clearCurrentEditPerson } from './chart.js';
 import { showNotification } from './addPerson.js';
@@ -11,6 +11,7 @@ let nameInput;
 let locationInput;
 let locationSuggestions;
 let searchButton;
+let clearButton;
 let searchError;
 let resultsCount;
 let personCards;
@@ -41,11 +42,12 @@ export function setupSearch(options = {}) {
     locationInput = document.getElementById('location-input');
     locationSuggestions = document.getElementById('location-suggestions');
     searchButton = document.getElementById('search-button');
+    clearButton = document.getElementById('clear-search-btn');
     searchError = document.getElementById('search-error');
     resultsCount = document.getElementById('results-count');
     personCards = document.getElementById('person-cards');
     searchResultsDropdown = document.querySelector('.search-results-dropdown');
-    closeResultsBtn = document.querySelector('.close-results-btn');
+    closeResultsBtn = document.getElementById('close-results-btn');
 
     // Debug check
     console.log('Search elements found:', {
@@ -54,12 +56,20 @@ export function setupSearch(options = {}) {
         locationInput: !!locationInput,
         locationSuggestions: !!locationSuggestions,
         searchButton: !!searchButton,
+        clearButton: !!clearButton,
         searchError: !!searchError,
         resultsCount: !!resultsCount,
         personCards: !!personCards,
         searchResultsDropdown: !!searchResultsDropdown,
         closeResultsBtn: !!closeResultsBtn
     });
+
+    // CRITICAL: Ensure modal is hidden on startup
+    if (searchResultsDropdown) {
+        searchResultsDropdown.style.display = 'none';
+        searchResultsDropdown.style.visibility = 'hidden';
+        searchResultsDropdown.style.opacity = '0';
+    }
 
     // Set up event listeners
     if (searchForm) {
@@ -70,6 +80,11 @@ export function setupSearch(options = {}) {
     if (searchButton) {
         searchButton.addEventListener('click', handleSearch);
         console.log('Search button click handler attached');
+    }
+
+    if (clearButton) {
+        clearButton.addEventListener('click', handleClearSearch);
+        console.log('Clear button click handler attached');
     }
 
     // Set up location type-ahead
@@ -87,7 +102,7 @@ export function setupSearch(options = {}) {
 
     // Close modal on Escape key
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && searchResultsDropdown && searchResultsDropdown.style.display === 'flex') {
+        if (e.key === 'Escape' && searchResultsDropdown && isModalVisible()) {
             clearSearchResults();
         }
     });
@@ -111,6 +126,16 @@ export function setupSearch(options = {}) {
     });
 
     console.log('Search component initialized');
+}
+
+/**
+ * Check if modal is currently visible
+ * @returns {boolean}
+ */
+function isModalVisible() {
+    if (!searchResultsDropdown) return false;
+    const computedStyle = window.getComputedStyle(searchResultsDropdown);
+    return computedStyle.display === 'flex' && computedStyle.visibility !== 'hidden';
 }
 
 /**
@@ -144,8 +169,8 @@ async function handleSearch(e) {
         searchButton.textContent = 'Searching...';
     }
 
-    // Clear previous results
-    clearSearchResults();
+    // Clear previous results but don't hide modal yet
+    clearSearchResultsContent();
 
     try {
         console.log(`Searching for name: "${name}", location: "${location}"`);
@@ -204,6 +229,16 @@ async function handleSearch(e) {
             searchButton.textContent = 'Search';
         }
     }
+}
+
+/**
+ * Handle clear search button
+ */
+function handleClearSearch() {
+    if (nameInput) nameInput.value = '';
+    if (locationInput) locationInput.value = '';
+    clearSearchResults();
+    hideSuggestions();
 }
 
 /**
@@ -336,29 +371,29 @@ function selectSuggestion(suggestion) {
  * Show the search results dropdown
  */
 function showSearchResults() {
-    if (searchResultsDropdown) {
-        searchResultsDropdown.style.display = 'flex';
-        // Prevent body scroll when modal is open
-        document.body.classList.add('modal-open');
+    if (!searchResultsDropdown) return;
 
-        // Focus management for accessibility
-        const closeBtn = searchResultsDropdown.querySelector('.close-results-btn');
-        if (closeBtn) {
-            closeBtn.focus();
-        }
+    console.log('Showing search results modal');
+
+    // Force proper display
+    searchResultsDropdown.style.display = 'flex';
+    searchResultsDropdown.style.visibility = 'visible';
+    searchResultsDropdown.style.opacity = '1';
+
+    // Prevent body scroll when modal is open
+    document.body.classList.add('modal-open');
+
+    // Focus management for accessibility
+    const closeBtn = searchResultsDropdown.querySelector('.close-results-btn');
+    if (closeBtn) {
+        closeBtn.focus();
     }
 }
 
 /**
- * Clear search results
+ * Clear search results content only (don't hide modal)
  */
-export function clearSearchResults() {
-    if (searchResultsDropdown) {
-        searchResultsDropdown.style.display = 'none';
-        // Re-enable body scroll
-        document.body.classList.remove('modal-open');
-    }
-
+function clearSearchResultsContent() {
     if (searchError) {
         searchError.style.display = 'none';
     }
@@ -370,6 +405,24 @@ export function clearSearchResults() {
     if (personCards) {
         personCards.innerHTML = '';
     }
+}
+
+/**
+ * Clear search results and hide modal
+ */
+export function clearSearchResults() {
+    console.log('Clearing search results');
+
+    if (searchResultsDropdown) {
+        searchResultsDropdown.style.display = 'none';
+        searchResultsDropdown.style.visibility = 'hidden';
+        searchResultsDropdown.style.opacity = '0';
+
+        // Re-enable body scroll
+        document.body.classList.remove('modal-open');
+    }
+
+    clearSearchResultsContent();
 }
 
 /**
@@ -390,14 +443,14 @@ function showError(message) {
 }
 
 /**
- * Create a person card element
+ * Create a person card element with enhanced styling
  * @param {Object} person - Person data
  * @param {boolean} isInChart - Whether person is already in chart
  * @returns {HTMLElement} The card element
  */
 function createPersonCard(person, isInChart) {
     const card = document.createElement('div');
-    card.className = 'person-card';
+    card.className = `person-card ${isInChart ? 'in-chart' : ''}`;
     card.dataset.personId = person.id;
 
     // Format person details
@@ -407,18 +460,85 @@ function createPersonCard(person, isInChart) {
     const gender = person.gender === 'M' ? 'Male' : person.gender === 'F' ? 'Female' : 'Unknown';
     const birthDate = person.birthdate ? new Date(person.birthdate).toLocaleDateString() : '';
 
-    card.innerHTML = `
-        <div class="person-header">
-            <h3>${name}</h3>
-            ${isInChart ? '<span class="in-chart-badge">In Chart</span>' : ''}
+    // Generate initials for avatar
+    const initials = name.split(' ').map(word => word.charAt(0)).join('').substring(0, 2).toUpperCase();
+
+    // Create avatar section
+    const avatarSection = `
+        <div class="person-avatar">
+            ${person.avatar ?
+            `<img src="${person.avatar}" alt="${name}" onerror="this.parentElement.innerHTML='<span class=\\'avatar-initials\\'>${initials}</span>'">` :
+            `<span class="avatar-initials">${initials}</span>`
+        }
         </div>
+    `;
+
+    // Create person details with icons
+    const detailsSection = `
         <div class="person-details">
-            ${gender ? `<div><strong>Gender:</strong> ${gender}</div>` : ''}
-            ${currentLocation ? `<div><strong>Current Location:</strong> ${currentLocation}</div>` : ''}
-            ${nativePlace ? `<div><strong>Native Place:</strong> ${nativePlace}</div>` : ''}
-            ${birthDate ? `<div><strong>Birth Date:</strong> ${birthDate}</div>` : ''}
-            ${person.phone ? `<div><strong>Phone:</strong> ${person.phone}</div>` : ''}
-            ${person.mail_id ? `<div><strong>Email:</strong> ${person.mail_id}</div>` : ''}
+            ${gender ? `
+                <div class="detail-item">
+                    <svg class="detail-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
+                    </svg>
+                    <span><strong>Gender:</strong> ${gender}</span>
+                </div>
+            ` : ''}
+            ${currentLocation ? `
+                <div class="detail-item">
+                    <svg class="detail-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"/>
+                    </svg>
+                    <span><strong>Current Location:</strong> ${currentLocation}</span>
+                </div>
+            ` : ''}
+            ${nativePlace ? `
+                <div class="detail-item">
+                    <svg class="detail-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                    </svg>
+                    <span><strong>Native Place:</strong> ${nativePlace}</span>
+                </div>
+            ` : ''}
+            ${birthDate ? `
+                <div class="detail-item">
+                    <svg class="detail-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"/>
+                    </svg>
+                    <span><strong>Birth Date:</strong> ${birthDate}</span>
+                </div>
+            ` : ''}
+            ${person.phone ? `
+                <div class="detail-item">
+                    <svg class="detail-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                    </svg>
+                    <span><strong>Phone:</strong> ${person.phone}</span>
+                </div>
+            ` : ''}
+            ${person.mail_id ? `
+                <div class="detail-item">
+                    <svg class="detail-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+                    </svg>
+                    <span><strong>Email:</strong> ${person.mail_id}</span>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    card.innerHTML = `
+        ${avatarSection}
+        <div class="person-info">
+            <div class="person-header">
+                <div>
+                    <h3>${name}</h3>
+                    <div class="person-subtitle">ID: ${person.id}</div>
+                </div>
+                ${isInChart ? '<span class="in-chart-badge">Already in Chart</span>' : ''}
+            </div>
+            ${detailsSection}
         </div>
         <div class="person-actions">
             ${!isInChart ? `<button class="add-to-chart-btn" data-person-id="${person.id}">Add to Chart</button>` : ''}
@@ -442,7 +562,6 @@ function createPersonCard(person, isInChart) {
 
     if (viewDetailsBtn) {
         viewDetailsBtn.addEventListener('click', () => {
-            // Handle view details - you can integrate with your existing chart functionality
             console.log('View details for person:', person.id);
         });
     }
@@ -459,73 +578,6 @@ export function clearSearch() {
     clearSearchResults();
     hideSuggestions();
 }
-
-
-/**
- * Debug and fix search results modal positioning
- */
-function debugAndFixModal() {
-    const modal = document.querySelector('.search-results-dropdown');
-    if (!modal) {
-        console.error('Modal not found');
-        return;
-    }
-
-    // Log current computed styles
-    const computedStyle = window.getComputedStyle(modal);
-    console.log('Modal computed styles:', {
-        position: computedStyle.position,
-        top: computedStyle.top,
-        left: computedStyle.left,
-        right: computedStyle.right,
-        bottom: computedStyle.bottom,
-        width: computedStyle.width,
-        height: computedStyle.height,
-        zIndex: computedStyle.zIndex,
-        transform: computedStyle.transform
-    });
-
-    // Force correct positioning
-    modal.style.setProperty('position', 'fixed', 'important');
-    modal.style.setProperty('top', '0', 'important');
-    modal.style.setProperty('left', '0', 'important');
-    modal.style.setProperty('right', '0', 'important');
-    modal.style.setProperty('bottom', '0', 'important');
-    modal.style.setProperty('width', '100vw', 'important');
-    modal.style.setProperty('height', '100vh', 'important');
-    modal.style.setProperty('margin', '0', 'important');
-    modal.style.setProperty('padding', '0', 'important');
-    modal.style.setProperty('z-index', '9999', 'important');
-    modal.style.setProperty('display', 'flex', 'important');
-    modal.style.setProperty('justify-content', 'center', 'important');
-    modal.style.setProperty('align-items', 'center', 'important');
-    modal.style.setProperty('background', 'rgba(0, 0, 0, 0.5)', 'important');
-
-    console.log('Modal positioning fixed');
-}
-
-// Modified showSearchResults function with debug
-function showSearchResults() {
-    if (searchResultsDropdown) {
-        searchResultsDropdown.style.display = 'flex';
-
-        // Debug and fix modal positioning
-        debugAndFixModal();
-
-        // Prevent body scroll when modal is open
-        document.body.classList.add('modal-open');
-
-        // Focus management for accessibility
-        const closeBtn = searchResultsDropdown.querySelector('.close-results-btn');
-        if (closeBtn) {
-            closeBtn.focus();
-        }
-    }
-}
-
-
-
-
 
 // Export for use in other modules
 export { searchPeople, fetchLocationSuggestions };
