@@ -460,5 +460,72 @@ export function clearSearch() {
     hideSuggestions();
 }
 
+
+/**
+ * Debug and fix search results modal positioning
+ */
+function debugAndFixModal() {
+    const modal = document.querySelector('.search-results-dropdown');
+    if (!modal) {
+        console.error('Modal not found');
+        return;
+    }
+
+    // Log current computed styles
+    const computedStyle = window.getComputedStyle(modal);
+    console.log('Modal computed styles:', {
+        position: computedStyle.position,
+        top: computedStyle.top,
+        left: computedStyle.left,
+        right: computedStyle.right,
+        bottom: computedStyle.bottom,
+        width: computedStyle.width,
+        height: computedStyle.height,
+        zIndex: computedStyle.zIndex,
+        transform: computedStyle.transform
+    });
+
+    // Force correct positioning
+    modal.style.setProperty('position', 'fixed', 'important');
+    modal.style.setProperty('top', '0', 'important');
+    modal.style.setProperty('left', '0', 'important');
+    modal.style.setProperty('right', '0', 'important');
+    modal.style.setProperty('bottom', '0', 'important');
+    modal.style.setProperty('width', '100vw', 'important');
+    modal.style.setProperty('height', '100vh', 'important');
+    modal.style.setProperty('margin', '0', 'important');
+    modal.style.setProperty('padding', '0', 'important');
+    modal.style.setProperty('z-index', '9999', 'important');
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.style.setProperty('justify-content', 'center', 'important');
+    modal.style.setProperty('align-items', 'center', 'important');
+    modal.style.setProperty('background', 'rgba(0, 0, 0, 0.5)', 'important');
+
+    console.log('Modal positioning fixed');
+}
+
+// Modified showSearchResults function with debug
+function showSearchResults() {
+    if (searchResultsDropdown) {
+        searchResultsDropdown.style.display = 'flex';
+
+        // Debug and fix modal positioning
+        debugAndFixModal();
+
+        // Prevent body scroll when modal is open
+        document.body.classList.add('modal-open');
+
+        // Focus management for accessibility
+        const closeBtn = searchResultsDropdown.querySelector('.close-results-btn');
+        if (closeBtn) {
+            closeBtn.focus();
+        }
+    }
+}
+
+
+
+
+
 // Export for use in other modules
 export { searchPeople, fetchLocationSuggestions };
