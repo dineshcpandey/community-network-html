@@ -42,8 +42,15 @@ function showAddPersonForm() {
 
     document.body.appendChild(modal);
 
+
+
+
     // Add event listeners
     setupFormEventListeners(modal);
+
+    setTimeout(() => {
+        initializeImageUploadForModal(modal);
+    }, 100);
 
     // Add animation
     setTimeout(() => {
@@ -51,6 +58,56 @@ function showAddPersonForm() {
         modal.classList.add('visible');
     }, 10);
 }
+
+
+// ADD this new function:
+function initializeImageUploadForModal(modal) {
+    console.log('Initializing image upload for modal...');
+
+    // Set up the image tab click handler
+    const imageTabBtn = modal.querySelector('.tab-btn[data-tab="image"]');
+    if (imageTabBtn) {
+        imageTabBtn.addEventListener('click', (e) => {
+            // Deactivate all tabs
+            modal.querySelectorAll('.tab-btn').forEach(tb => tb.classList.remove('active'));
+            // Hide all tab panes  
+            modal.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            // Activate clicked tab
+            e.target.classList.add('active');
+            // Show image tab pane
+            const imageTabPane = modal.querySelector('#image-tab');
+            if (imageTabPane) {
+                imageTabPane.classList.add('active');
+            }
+        });
+    }
+
+    // Initialize the image upload component
+    setTimeout(() => {
+        const container = document.getElementById('person-image-upload-container');
+        if (container) {
+            personImageUpload = new ImageUpload('person-image-upload-container', {
+                maxSize: 10 * 1024 * 1024,
+                previewSize: 120,
+                onFileSelect: (file) => console.log('File selected:', file.name),
+                onUploadSuccess: (imageData) => {
+                    uploadedImageData = imageData;
+                    showNotification('Image uploaded successfully!', 'success');
+                },
+                onUploadError: (error) => {
+                    showNotification(`Image upload failed: ${error.message}`, 'error');
+                },
+                onRemove: () => {
+                    uploadedImageData = null;
+                }
+            });
+            console.log('Image upload component initialized successfully');
+        } else {
+            console.warn('Image upload container still not found');
+        }
+    }, 200);
+}
+
 
 /**
  * Create the modal content HTML
@@ -66,6 +123,7 @@ function createModalContent() {
             <div class="form-tabs">
                 <button type="button" class="tab-btn active" data-tab="basic-info">Basic Information</button>
                 <button type="button" class="tab-btn" data-tab="relationships">Relationships</button>
+                <button type="button" class="tab-btn" data-tab="image">Image</button>
             </div>
             
             <div class="tab-content">
@@ -164,6 +222,14 @@ function createModalContent() {
                     <div class="form-actions tab-nav">
                         <button type="button" class="prev-tab-btn" data-prev-tab="basic-info">Back to Basic Info</button>
                         <button type="submit" class="submit-btn">Create Person</button>
+                    </div>
+                </div>
+                <!-- Image Tab -->
+                <div class="tab-pane" id="image-tab">
+                    <div class="image-upload-section">
+                        <h3>Profile Image</h3>
+                        <p class="section-description">Upload a profile image for this person.</p>
+                        <div id="person-image-upload-container"></div>
                     </div>
                 </div>
             </div>
@@ -718,11 +784,8 @@ function debounce(func, delay) {
  * Call this function when setting up the Add Person form
  */
 export function initializePersonImageUpload() {
-    // Check if we need to add the image tab to the existing modal
-    addImageTabToAddPersonModal();
-
-    // Initialize the image upload component
-    setupImageUploadComponent();
+    // Don't initialize immediately - wait for modal to be created
+    console.log('Image upload initialization scheduled...');
 }
 
 /**
