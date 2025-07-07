@@ -122,8 +122,9 @@ function createModalContent() {
         <form id="add-person-form" class="add-person-form">
             <div class="form-tabs">
                 <button type="button" class="tab-btn active" data-tab="basic-info">Basic Information</button>
-                <button type="button" class="tab-btn" data-tab="relationships">Relationships</button>
                 <button type="button" class="tab-btn" data-tab="image">Image</button>
+                <button type="button" class="tab-btn" data-tab="relationships">Relationships</button>
+               
             </div>
             
             <div class="tab-content">
