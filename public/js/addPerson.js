@@ -169,9 +169,20 @@ function createModalContent() {
                     </div>
                     
                     <div class="form-actions tab-nav">
-                        <button type="button" class="next-tab-btn" data-next-tab="relationships">Next: Add Relationships</button>
+                        <button type="button" class="next-tab-btn" data-next-tab="image">Next: Add Image</button>
                     </div>
                 </div>
+                <!-- Image Tab -->
+                <div class="tab-pane" id="image-tab">
+                    <div class="image-upload-section">
+                        <h3>Profile Image</h3>
+                        <p class="section-description">Upload a profile image for this person.</p>
+                        <div id="person-image-upload-container"></div>
+                    </div>
+                </div>
+                <div class="form-actions tab-nav">
+                        <button type="button" class="next-tab-btn" data-next-tab="relationships">Next: Add Relationships</button>
+                    </div>
                 
                 <!-- Relationships Tab -->
                 <div class="tab-pane" id="relationships-tab">
@@ -225,14 +236,7 @@ function createModalContent() {
                         <button type="submit" class="submit-btn">Create Person</button>
                     </div>
                 </div>
-                <!-- Image Tab -->
-                <div class="tab-pane" id="image-tab">
-                    <div class="image-upload-section">
-                        <h3>Profile Image</h3>
-                        <p class="section-description">Upload a profile image for this person.</p>
-                        <div id="person-image-upload-container"></div>
-                    </div>
-                </div>
+                
             </div>
         </form>
     `;

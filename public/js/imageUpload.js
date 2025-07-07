@@ -12,7 +12,7 @@ class ImageUpload {
             maxSize: 10 * 1024 * 1024, // 10MB
             allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
             allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp'],
-            apiEndpoint: '/api/images/upload',
+            apiEndpoint: 'http://localhost:5050/api/images/upload',
             previewSize: 150, // pixels
             ...options
         };
