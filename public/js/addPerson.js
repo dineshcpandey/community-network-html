@@ -5,6 +5,8 @@ import { updateChartData } from './chart.js';
 import { searchByName } from './api.js';
 import { chartData } from './app.js';
 import { isUserAuthenticated, showLoginForm } from './auth.js';
+import { ImageUpload } from './imageUpload.js';
+import { ImageUtils } from './imageUtils.js';
 
 // Global state for selected relatives
 let selectedRelatives = {
@@ -13,6 +15,8 @@ let selectedRelatives = {
     spouse: null,
     children: []
 };
+let personImageUpload = null;
+let uploadedImageData = null;
 
 /**
  * Show the add person form
@@ -707,6 +711,379 @@ function debounce(func, delay) {
         }, delay);
     };
 }
+
+
+/**
+ * Initialize image upload in Add Person modal
+ * Call this function when setting up the Add Person form
+ */
+export function initializePersonImageUpload() {
+    // Check if we need to add the image tab to the existing modal
+    addImageTabToAddPersonModal();
+
+    // Initialize the image upload component
+    setupImageUploadComponent();
+}
+
+/**
+ * Add image tab to existing Add Person modal
+ */
+function addImageTabToAddPersonModal() {
+    const tabsContainer = document.querySelector('.form-tabs');
+    const tabContent = document.querySelector('.tab-content');
+
+    if (!tabsContainer || !tabContent) {
+        console.warn('Add Person modal structure not found');
+        return;
+    }
+
+    // Add Image tab button if it doesn't exist
+    if (!document.querySelector('.tab-btn[data-tab="image"]')) {
+        const imageTabBtn = document.createElement('button');
+        imageTabBtn.type = 'button';
+        imageTabBtn.className = 'tab-btn';
+        imageTabBtn.setAttribute('data-tab', 'image');
+        imageTabBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21,15 16,10 5,21"/>
+            </svg>
+            Image
+        `;
+
+        // Insert before the last tab (usually the summary/review tab)
+        const lastTab = tabsContainer.querySelector('.tab-btn:last-child');
+        if (lastTab) {
+            tabsContainer.insertBefore(imageTabBtn, lastTab);
+        } else {
+            tabsContainer.appendChild(imageTabBtn);
+        }
+    }
+
+    // Add Image tab pane if it doesn't exist
+    if (!document.querySelector('#image-tab')) {
+        const imageTabPane = document.createElement('div');
+        imageTabPane.id = 'image-tab';
+        imageTabPane.className = 'tab-pane';
+        imageTabPane.innerHTML = `
+            <div class="image-upload-section">
+                <h3>Profile Image</h3>
+                <p class="section-description">Upload a profile image for this person. This will be used as their avatar throughout the application.</p>
+                
+                <div id="person-image-upload-container"></div>
+                
+                <div class="image-upload-tips">
+                    <h4>Tips for better images:</h4>
+                    <ul>
+                        <li>Use a clear, high-quality photo</li>
+                        <li>Make sure the person's face is clearly visible</li>
+                        <li>Square images work best for avatars</li>
+                        <li>Avoid dark or blurry photos</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+
+        // Insert before the last tab pane
+        const lastTabPane = tabContent.querySelector('.tab-pane:last-child');
+        if (lastTabPane) {
+            tabContent.insertBefore(imageTabPane, lastTabPane);
+        } else {
+            tabContent.appendChild(imageTabPane);
+        }
+    }
+
+    // Add tab switching functionality
+    setupImageTabNavigation();
+}
+
+/**
+ * Setup image upload component
+ */
+function setupImageUploadComponent() {
+    const container = document.getElementById('person-image-upload-container');
+    if (!container) {
+        console.warn('Image upload container not found');
+        return;
+    }
+
+    // Initialize ImageUpload component
+    personImageUpload = new ImageUpload('person-image-upload-container', {
+        maxSize: 10 * 1024 * 1024, // 10MB
+        previewSize: 120,
+        onFileSelect: handleImageFileSelect,
+        onUploadSuccess: handleImageUploadSuccess,
+        onUploadError: handleImageUploadError,
+        onRemove: handleImageRemove
+    });
+}
+
+/**
+ * Setup tab navigation for image tab
+ */
+function setupImageTabNavigation() {
+    const imageTabBtn = document.querySelector('.tab-btn[data-tab="image"]');
+    if (imageTabBtn) {
+        imageTabBtn.addEventListener('click', () => {
+            // Switch to image tab
+            switchToTab('image');
+        });
+    }
+}
+
+/**
+ * Switch to specific tab
+ */
+function switchToTab(tabName) {
+    // Deactivate all tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.remove('active');
+    });
+
+    // Activate target tab
+    const targetBtn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+    const targetPane = document.querySelector(`#${tabName}-tab`);
+
+    if (targetBtn) targetBtn.classList.add('active');
+    if (targetPane) targetPane.classList.add('active');
+}
+
+/**
+ * Handle image file selection
+ */
+function handleImageFileSelect(file) {
+    console.log('Image file selected:', file.name);
+
+    // You can add validation or preview logic here
+    // The ImageUpload component handles basic validation
+}
+
+/**
+ * Handle successful image upload
+ */
+function handleImageUploadSuccess(imageData) {
+    console.log('Image uploaded successfully:', imageData);
+
+    uploadedImageData = imageData;
+
+    // Show success notification
+    ImageUtils.showNotification('Image uploaded successfully!', 'success');
+
+    // Enable form submission or move to next step
+    updateFormValidationState();
+}
+
+/**
+ * Handle image upload error
+ */
+function handleImageUploadError(error) {
+    console.error('Image upload failed:', error);
+
+    uploadedImageData = null;
+
+    // Show error notification
+    ImageUtils.showNotification(`Image upload failed: ${error.message}`, 'error');
+}
+
+/**
+ * Handle image removal
+ */
+function handleImageRemove() {
+    console.log('Image removed');
+
+    uploadedImageData = null;
+    updateFormValidationState();
+}
+
+/**
+ * Update form validation state based on image upload
+ */
+function updateFormValidationState() {
+    // This function can be used to enable/disable form submission
+    // based on whether an image has been uploaded
+
+    const submitBtn = document.querySelector('#add-person-form button[type="submit"]');
+    if (submitBtn) {
+        // You can add logic here to require image upload or make it optional
+        // For now, we'll make it optional
+    }
+}
+
+/**
+ * Enhanced form submission handler with image data
+ * This should replace or extend your existing form submission handler
+ */
+export async function handleAddPersonWithImage(formData) {
+    try {
+        // First, create the person without image
+        const personData = {
+            personname: formData.get('personname'),
+            birthdate: formData.get('birthdate'),
+            gender: formData.get('gender'),
+            currentlocation: formData.get('currentlocation'),
+            nativeplace: formData.get('nativeplace'),
+            phone: formData.get('phone'),
+            mail_id: formData.get('mail_id'),
+            worksat: formData.get('worksat'),
+            living: formData.get('living'),
+            // ... other form fields
+        };
+
+        // Add relationship data if available
+        if (selectedRelatives.father) {
+            personData.fatherid = selectedRelatives.father.id;
+        }
+        if (selectedRelatives.mother) {
+            personData.motherid = selectedRelatives.mother.id;
+        }
+        if (selectedRelatives.spouse) {
+            personData.spouseids = [selectedRelatives.spouse.id];
+        }
+
+        console.log('Creating person with data:', personData);
+
+        // Create person first
+        const response = await fetch('/api/details', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(personData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to create person: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const newPersonId = result.id;
+
+        console.log('Person created with ID:', newPersonId);
+
+        // If there's an uploaded image, link it to the person
+        if (uploadedImageData) {
+            try {
+                // The image should already be uploaded and linked during the upload process
+                // If not, we can upload it now with the person ID
+                if (!uploadedImageData.personId) {
+                    await linkImageToPerson(uploadedImageData.imageId, newPersonId);
+                }
+
+                console.log('Image linked to person');
+            } catch (imageError) {
+                console.warn('Failed to link image to person:', imageError);
+                // Don't fail the entire operation if image linking fails
+            }
+        }
+
+        // Show success notification
+        ImageUtils.showNotification('Person added successfully!', 'success');
+
+        // Reset form and image upload
+        resetAddPersonForm();
+
+        // Close modal
+        closeModal();
+
+        // Trigger any necessary updates (like chart refresh)
+        if (typeof refreshChart === 'function') {
+            refreshChart();
+        }
+
+        return result;
+
+    } catch (error) {
+        console.error('Error adding person:', error);
+        ImageUtils.showNotification(`Failed to add person: ${error.message}`, 'error');
+        throw error;
+    }
+}
+
+/**
+ * Link an uploaded image to a person
+ */
+async function linkImageToPerson(imageId, personId) {
+    try {
+        const response = await fetch(`/api/images/${imageId}/link`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ personId })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to link image: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error linking image to person:', error);
+        throw error;
+    }
+}
+
+/**
+ * Reset the Add Person form including image upload
+ */
+function resetAddPersonForm() {
+    // Reset the image upload component
+    if (personImageUpload) {
+        personImageUpload.reset();
+    }
+
+    // Clear uploaded image data
+    uploadedImageData = null;
+
+    // Reset form validation state
+    updateFormValidationState();
+
+    // Switch back to first tab
+    switchToTab('basic');
+}
+
+/**
+ * Pre-upload image with person ID after person creation
+ * This can be called if you want to upload the image after creating the person
+ */
+export async function uploadPersonImage(personId) {
+    if (!personImageUpload || !personImageUpload.state.file) {
+        return null;
+    }
+
+    try {
+        const imageData = await personImageUpload.uploadImage(personId);
+        uploadedImageData = imageData;
+        return imageData;
+    } catch (error) {
+        console.error('Failed to upload person image:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get current image upload state
+ */
+export function getImageUploadState() {
+    return {
+        hasImage: !!uploadedImageData,
+        imageData: uploadedImageData,
+        isUploading: personImageUpload ? personImageUpload.state.isUploading : false
+    };
+}
+
+// Initialize when the module is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Wait a bit for the Add Person modal to be set up
+    setTimeout(initializePersonImageUpload, 100);
+});
+
+
 
 // Export necessary functions
 export {
