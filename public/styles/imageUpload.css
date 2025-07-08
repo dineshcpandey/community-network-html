@@ -1,4 +1,4 @@
-/* public/styles/imageUpload.css - Image Upload Component Styles */
+/* Enhanced ImageUpload Component Styles with Status Indicators */
 
 .image-upload-component {
     width: 100%;
@@ -68,7 +68,18 @@
 .upload-sub-text {
     font-size: 14px;
     color: #6c757d;
+    margin: 0 0 4px 0;
+}
+
+.upload-note {
+    font-size: 12px;
+    color: #17a2b8;
+    font-style: italic;
     margin: 0;
+    padding: 4px 8px;
+    background: #e6f3ff;
+    border-radius: 4px;
+    display: inline-block;
 }
 
 /* Preview Section */
@@ -94,6 +105,7 @@
     overflow: hidden;
     border: 2px solid #e9ecef;
     background: #f8f9fa;
+    flex-shrink: 0;
 }
 
 .preview-image img {
@@ -102,199 +114,171 @@
     object-fit: cover;
 }
 
-.preview-overlay {
-    position: absolute;
-    top: 0;
-    right: 0;
-    left: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.preview-image:hover .preview-overlay {
-    opacity: 1;
-}
-
-.preview-action-btn {
-    background: rgba(220, 53, 69, 0.9);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 8px;
-    cursor: pointer;
-    transition: background 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.preview-action-btn:hover {
-    background: #dc3545;
-}
-
-.preview-info {
+.preview-details {
     flex: 1;
+    min-width: 0;
 }
 
 .file-name {
+    font-size: 14px;
     font-weight: 500;
     color: #495057;
     margin: 0 0 4px 0;
-    font-size: 14px;
     word-break: break-word;
 }
 
 .file-size {
+    font-size: 12px;
     color: #6c757d;
+    margin: 0 0 8px 0;
+}
+
+.file-status {
     margin: 0;
-    font-size: 13px;
+}
+
+.status-text {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.status-text.status-ready {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-text.status-success {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #b8daff;
+}
+
+.status-text.status-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Upload Actions */
+.upload-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.upload-actions .btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: 1px solid;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.upload-actions .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.upload-actions .btn-primary {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.upload-actions .btn-primary:hover {
+    background: #0056b3;
+    border-color: #0056b3;
+}
+
+.upload-actions .btn-secondary {
+    background: #6c757d;
+    color: white;
+    border-color: #6c757d;
+}
+
+.upload-actions .btn-secondary:hover {
+    background: #545b62;
+    border-color: #545b62;
+}
+
+.upload-actions .btn svg {
+    width: 14px;
+    height: 14px;
 }
 
 /* Upload Progress */
 .upload-progress {
-    margin-top: 20px;
-    padding: 20px;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    background: white;
+    margin-top: 16px;
+    text-align: center;
 }
 
 .progress-bar {
     width: 100%;
-    height: 8px;
+    height: 4px;
     background: #e9ecef;
-    border-radius: 4px;
+    border-radius: 2px;
     overflow: hidden;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #007bff, #0056b3);
-    border-radius: 4px;
-    width: 0%;
-    transition: width 0.3s ease;
-    animation: progressAnimation 2s ease-in-out infinite;
+    border-radius: 2px;
+    animation: indeterminate 2s infinite;
 }
 
-@keyframes progressAnimation {
+@keyframes indeterminate {
     0% {
-        width: 0%;
-    }
-
-    50% {
-        width: 70%;
+        transform: translateX(-100%);
     }
 
     100% {
-        width: 100%;
+        transform: translateX(100%);
     }
 }
 
 .progress-text {
-    text-align: center;
-    color: #495057;
-    font-size: 14px;
+    font-size: 12px;
+    color: #6c757d;
     margin: 0;
-    font-weight: 500;
 }
 
 /* Upload Error */
 .upload-error {
-    margin-top: 20px;
-    padding: 16px;
+    margin-top: 16px;
+    padding: 12px;
     background: #f8d7da;
     color: #721c24;
     border: 1px solid #f5c6cb;
-    border-radius: 8px;
+    border-radius: 4px;
 }
 
-.error-content {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.upload-error p {
+    margin: 0;
     font-size: 14px;
-}
-
-.error-content svg {
-    flex-shrink: 0;
-    color: #dc3545;
-}
-
-/* Upload Actions */
-.upload-actions {
-    margin-top: 20px;
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-}
-
-.upload-btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 100px;
-}
-
-.upload-btn.primary {
-    background: #007bff;
-    color: white;
-}
-
-.upload-btn.primary:hover {
-    background: #0056b3;
-    transform: translateY(-1px);
-}
-
-.upload-btn.secondary {
-    background: #6c757d;
-    color: white;
-}
-
-.upload-btn.secondary:hover {
-    background: #5a6268;
-    transform: translateY(-1px);
-}
-
-.upload-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* Success State */
-.upload-success {
-    margin-top: 20px;
-    padding: 16px;
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-}
-
-.upload-success svg {
-    flex-shrink: 0;
-    color: #28a745;
 }
 
 /* Responsive Design */
 @media (max-width: 480px) {
     .upload-area {
         padding: 30px 15px;
-        min-height: 140px;
+        min-height: 120px;
+    }
+
+    .upload-icon svg {
+        width: 36px;
+        height: 36px;
     }
 
     .upload-main-text {
@@ -308,7 +292,6 @@
     .preview-container {
         flex-direction: column;
         text-align: center;
-        gap: 12px;
     }
 
     .preview-image {
@@ -317,88 +300,53 @@
     }
 
     .upload-actions {
-        flex-direction: column;
-    }
-
-    .upload-btn {
-        width: 100%;
+        justify-content: center;
     }
 }
 
-/* Animation for file drop */
-@keyframes bounceIn {
+/* Animation for file selection */
+.upload-area.has-file {
+    animation: fileSelected 0.3s ease;
+}
+
+@keyframes fileSelected {
     0% {
-        transform: scale(0.3);
-        opacity: 0;
+        transform: scale(1);
+        border-color: #e1e5e9;
     }
 
     50% {
-        transform: scale(1.05);
-    }
-
-    70% {
-        transform: scale(0.9);
+        transform: scale(1.02);
+        border-color: #28a745;
     }
 
     100% {
         transform: scale(1);
-        opacity: 1;
+        border-color: #28a745;
     }
 }
 
-.upload-area.file-dropped {
-    animation: bounceIn 0.6s ease-out;
+/* Integration with Add Person Modal */
+.add-person-modal .image-upload-component {
+    max-width: 100%;
 }
 
-/* Loading states */
-.upload-area.uploading {
+.add-person-modal .upload-area {
+    min-height: 140px;
+}
+
+.add-person-modal .preview-section {
+    margin-top: 16px;
+    padding: 16px;
+}
+
+/* Form submission state */
+.form-submitting .upload-actions {
+    opacity: 0.5;
     pointer-events: none;
+}
+
+.form-submitting .upload-area {
     opacity: 0.7;
-}
-
-.upload-area.uploading::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 20px;
-    height: 20px;
-    margin: -10px 0 0 -10px;
-    border: 2px solid #007bff;
-    border-top: 2px solid transparent;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-/* Focus states for accessibility */
-.upload-area:focus-within {
-    outline: 2px solid #007bff;
-    outline-offset: 2px;
-}
-
-.preview-action-btn:focus,
-.upload-btn:focus {
-    outline: 2px solid #007bff;
-    outline-offset: 2px;
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-    .upload-area {
-        border-width: 3px;
-    }
-
-    .upload-btn {
-        border: 2px solid currentColor;
-    }
+    pointer-events: none;
 }

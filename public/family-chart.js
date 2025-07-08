@@ -888,8 +888,8 @@
   }
 
   function pathToMain(cards, links, datum, main_datum) {
-    console.log("Path to main")
-    console.dir(main_datum)
+    // console.log("Path to main")
+    //console.dir(main_datum)
 
     const is_ancestry = datum.is_ancestry;
     const links_data = links.data();

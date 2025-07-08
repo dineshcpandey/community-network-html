@@ -10,10 +10,10 @@ export const ImageUtils = {
      * API Configuration
      */
     API: {
-        BASE_URL: '/api/images',
-        UPLOAD_ENDPOINT: '/api/images/upload',
-        SERVE_ENDPOINT: '/api/images/serve',
-        PERSON_IMAGES_ENDPOINT: '/api/images/person'
+        BASE_URL: 'http://localhost:5050/api/images',
+        UPLOAD_ENDPOINT: 'http://localhost:5050/api/images/upload',
+        SERVE_ENDPOINT: 'http://localhost:5050/api/images/serve',
+        PERSON_IMAGES_ENDPOINT: 'http://localhost:5050/api/images/person'
     },
 
     /**
