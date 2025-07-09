@@ -368,3 +368,27 @@ export async function fetchLocationSuggestions(query = '') {
         throw error;
     }
 }
+
+
+/**
+ * Find route between two people (add this function to your existing api-utils.js)
+ * @param {string} person1Id - ID of first person
+ * @param {string} person2Id - ID of second person  
+ * @returns {Promise<Object>} Route data
+ */
+export async function findRouteBetweenPeople(person1Id, person2Id) {
+    try {
+        const response = await makeAuthenticatedRequest(`/api/details/${person1Id}/route/${person2Id}`);
+
+        if (!response.ok) {
+            throw new Error(`Route API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log(`Route found between ${person1Id} and ${person2Id}:`, data);
+        return data;
+    } catch (error) {
+        console.error('Error finding route between people:', error);
+        throw error;
+    }
+}

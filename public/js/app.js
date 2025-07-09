@@ -8,6 +8,10 @@ import { setupEventListeners } from './eventHandlers.js';
 import { showAddPersonForm } from './addPerson.js';
 import { initAuth, isUserAuthenticated, showLoginForm, logout } from './auth.js';
 
+import { AvatarUtils } from './avatarUtils.js';
+import { ChartAvatarEnhancer } from './chartAvatarEnhancer.js';
+
+
 // Global state
 export let chartData = [];
 let selectedNode = null;

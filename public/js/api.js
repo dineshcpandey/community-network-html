@@ -10,7 +10,7 @@ const API_BASE_URL = 'http://localhost:5050/api/details';
  */
 export async function fetchInitialData() {
     try {
-        const response = await fetch('./data/data2.json');
+        const response = await fetch('./data/data5.json');
         if (!response.ok) {
             throw new Error(`Failed to load initial data: ${response.status}`);
         }

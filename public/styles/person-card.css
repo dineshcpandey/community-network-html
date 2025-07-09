@@ -50,6 +50,7 @@
     animation: spin 1s ease-in-out infinite;
 }
 
+/* Enhanced Person Card Avatar Section */
 .person-card-avatar {
     width: 80px;
     min-width: 80px;
@@ -60,11 +61,104 @@
     background-color: #f5f5f5;
 }
 
+/* Avatar Container - Used by AvatarUtils */
+.avatar-container {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid #95a5a6;
+    transition: all 0.3s ease;
+}
+
+.avatar-container.male {
+    border-color: #3498db;
+}
+
+.avatar-container.female {
+    border-color: #e84393;
+}
+
+.avatar-container.unknown {
+    border-color: #95a5a6;
+}
+
+/* Avatar Image */
+.avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    transition: opacity 0.3s ease;
+}
+
+.avatar-image.small {
+    width: 40px;
+    height: 40px;
+}
+
+.avatar-image.medium {
+    width: 60px;
+    height: 60px;
+}
+
+.avatar-image.large {
+    width: 80px;
+    height: 80px;
+}
+
+/* Avatar Fallback */
+.avatar-fallback {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+}
+
+.avatar-fallback.small {
+    font-size: 16px;
+}
+
+.avatar-fallback.medium {
+    font-size: 24px;
+}
+
+.avatar-fallback.large {
+    font-size: 32px;
+}
+
+.avatar-fallback.male {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.avatar-fallback.female {
+    background: linear-gradient(135deg, #e84393, #d63384);
+}
+
+.avatar-fallback.unknown {
+    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+}
+
+/* Legacy Avatar Support (for backward compatibility) */
 .avatar {
     width: 60px;
     height: 60px;
     border-radius: 50%;
     object-fit: cover;
+    transition: all 0.3s ease;
 }
 
 .avatar.male {
@@ -79,6 +173,7 @@
     border: 3px solid #95a5a6;
 }
 
+/* Person Card Info Section */
 .person-card-info {
     flex: 1;
     padding: 0.8rem;
@@ -121,6 +216,35 @@
     gap: 0.5rem;
 }
 
+/* Enhanced Avatar Hover Effects */
+.avatar-container:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.avatar-container.male:hover {
+    border-color: #2980b9;
+}
+
+.avatar-container.female:hover {
+    border-color: #d63384;
+}
+
+.avatar-container.unknown:hover {
+    border-color: #7f8c8d;
+}
+
+/* Loading States for Images */
+.avatar-image.loading {
+    opacity: 0.7;
+    filter: blur(2px);
+}
+
+.avatar-image.loaded {
+    opacity: 1;
+    filter: none;
+}
+
 /* Locating Indicator */
 .locating-indicator {
     width: 100%;
@@ -143,67 +267,106 @@
     animation: spin 1s ease-in-out infinite;
 }
 
-/* Selected relative person card */
-.selected-relative,
-.selected-relatives {
-    margin-top: 0.5rem;
-    min-height: 40px;
+/* Responsive Design */
+@media (max-width: 768px) {
+    .person-card {
+        flex-direction: column;
+        max-height: none;
+        min-height: 120px;
+    }
+
+    .person-card-avatar {
+        width: 100%;
+        min-width: 100%;
+        padding: 0.5rem;
+        justify-content: center;
+    }
+
+    .avatar-container {
+        width: 50px;
+        height: 50px;
+    }
+
+    .avatar-fallback {
+        font-size: 20px;
+    }
+
+    .person-card-info {
+        text-align: center;
+    }
 }
 
-.no-selection {
-    color: #95a5a6;
-    font-style: italic;
-    font-size: 0.9rem;
+/* High DPI Display Support */
+@media (-webkit-min-device-pixel-ratio: 2),
+(min-resolution: 192dpi) {
+    .avatar-image {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
 }
 
-.selected-person,
-.selected-child {
-    display: flex;
-    align-items: center;
-    padding: 0.5rem;
-    background-color: #f5f7fa;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
+/* Dark Mode Support (if needed) */
+@media (prefers-color-scheme: dark) {
+    .person-card {
+        background-color: #2c3e50;
+        border-color: #34495e;
+        color: #ecf0f1;
+    }
+
+    .person-card-avatar {
+        background-color: #34495e;
+    }
+
+    .person-name {
+        color: #ecf0f1;
+    }
+
+    .detail-value {
+        color: #bdc3c7;
+    }
+
+    .detail-label {
+        color: #95a5a6;
+    }
 }
 
-.selected-avatar {
-    width: 30px;
-    height: 30px;
+/* Animation Keyframes */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Image Upload Indicator */
+.has-uploaded-image {
+    position: relative;
+}
+
+.has-uploaded-image::after {
+    content: '📷';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: #28a745;
+    color: white;
     border-radius: 50%;
-    margin-right: 0.8rem;
-    object-fit: cover;
-    border: 2px solid #3498db;
-}
-
-.selected-name {
-    flex: 1;
-    font-weight: 500;
-    color: #2c3e50;
-}
-
-.remove-relative-btn,
-.remove-child-btn {
-    background: none;
-    border: none;
-    color: #e74c3c;
-    font-size: 1.2rem;
-    cursor: pointer;
-    width: 24px;
-    height: 24px;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    transition: background 0.2s;
-}
-
-.remove-relative-btn:hover,
-.remove-child-btn:hover {
-    background-color: rgba(231, 76, 60, 0.1);
-}
-
-.selected-children-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    border: 2px solid white;
 }

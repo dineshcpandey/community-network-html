@@ -8,6 +8,8 @@ import { saveRelationshipsOnSubmit } from './editForm.js';
 import { isUserAuthenticated, showLoginForm } from './auth.js';
 
 
+
+
 // Global chart instance
 let f3Chart = null;
 let f3Card = null;
@@ -141,6 +143,211 @@ function handleFormSubmission(currentEditPerson) {
         console.error('Error handling form submission:', error);
         throw error;
     }
+}
+
+/**
+ * Check if a person is already in the chart
+ * @param {string} personId - The person ID to check
+ * @returns {boolean} True if person is in chart, false otherwise
+ */
+export function isPersonInChart(personId) {
+    return chartData.some(person => person.id === personId);
+}
+
+/**
+ * Add a person to the chart
+ * @param {Object} person - The person data to add
+ * @returns {Promise<void>}
+ */
+export async function addPersonToChart(person) {
+    try {
+        console.log('Adding person to chart:', person.id);
+
+        // Check if person is already in chart
+        if (isPersonInChart(person.id)) {
+            console.log('Person already in chart:', person.id);
+            return;
+        }
+
+        // Convert the person data to the chart format if needed
+        const chartPerson = convertPersonToChartFormat(person);
+
+        // Add the person to the chart data
+        const updatedChartData = [...chartData, chartPerson];
+
+        // Update the central store
+        updateChartDataStore(updatedChartData);
+
+        // Update the chart display
+        await updateChartData([chartPerson]);
+
+        console.log('Person added to chart successfully:', person.id);
+
+    } catch (error) {
+        console.error('Error adding person to chart:', error);
+        throw error;
+    }
+}
+
+/**
+ * Convert person data from search/API format to chart format
+ * @param {Object} person - Person data from search/API
+ * @returns {Object} Person data in chart format
+ */
+function convertPersonToChartFormat(person) {
+    // If person is already in chart format, return as-is
+    if (person.data && person.rels) {
+        return person;
+    }
+
+    // Convert from API/search format to chart format
+    const [firstName = '', ...rest] = (person.personname || '').split(' ');
+    const lastName = rest.join(' ');
+
+    // Determine avatar URL with priority: uploaded image > Facebook > default
+    let avatarUrl = 'https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg';
+
+    if (person.profile_image_url) {
+        // If it's a relative path, make it absolute
+        if (person.profile_image_url.startsWith('/uploads/')) {
+            avatarUrl = `http://localhost:5050/api/images/serve/${person.profile_image_filename}`;
+        } else if (person.profile_image_url.startsWith('http')) {
+            avatarUrl = person.profile_image_url;
+        } else {
+            avatarUrl = `http://localhost:5050/api/images/serve/${person.profile_image_url}`;
+        }
+    } else if (person.fb_id) {
+        avatarUrl = `https://graph.facebook.com/${person.fb_id}/picture`;
+    }
+
+    return {
+        id: person.id.toString(),
+        rels: {
+            spouses: [],
+            children: [],
+            // Add father/mother if they exist
+            ...(person.fatherid && { father: person.fatherid.toString() }),
+            ...(person.motherid && { mother: person.motherid.toString() })
+        },
+        data: {
+            "first name": firstName,
+            "last name": lastName,
+            "birthday": person.birthdate || person.yr_birth || person.date_birth || null,
+            "avatar": avatarUrl,
+            "gender": person.gender && person.gender.length > 0
+                ? person.gender.charAt(0).toUpperCase()
+                : 'U',
+            "location": person.currentlocation || null,
+            "contact": {
+                "email": person.mail_id || null,
+                "phone": person.phone || null
+            },
+            "work": person.worksat || null,
+            "nativePlace": person.nativeplace || null,
+            "desc": `${person.nativeplace || ''} ${person.currentlocation || ''} ${person.worksat || ''}`,
+            "label": `${firstName} ${lastName}`,
+            // Add image metadata for enhanced display
+            "hasUploadedImage": !!person.profile_image_url,
+            "imageFilename": person.profile_image_filename || null,
+            "imageUploadDate": person.image_upload_date || null
+        }
+    };
+}
+
+/**
+ * Remove a person from the chart
+ * @param {string} personId - The person ID to remove
+ * @returns {Promise<void>}
+ */
+export async function removePersonFromChart(personId) {
+    try {
+        console.log('Removing person from chart:', personId);
+
+        // Check if person is in chart
+        if (!isPersonInChart(personId)) {
+            console.log('Person not in chart:', personId);
+            return;
+        }
+
+        // Remove the person from chart data
+        const updatedChartData = chartData.filter(person => person.id !== personId);
+
+        // Update the central store
+        updateChartDataStore(updatedChartData);
+
+        // Update the chart display
+        await updateChartData(updatedChartData);
+
+        console.log('Person removed from chart successfully:', personId);
+
+    } catch (error) {
+        console.error('Error removing person from chart:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get a person from the chart by ID
+ * @param {string} personId - The person ID to get
+ * @returns {Object|null} The person data or null if not found
+ */
+export function getPersonFromChart(personId) {
+    return chartData.find(person => person.id === personId) || null;
+}
+
+
+/**
+ * Update a person in the chart
+ * @param {string} personId - The person ID to update
+ * @param {Object} updatedData - The updated person data
+ * @returns {Promise<void>}
+ */
+export async function updatePersonInChart(personId, updatedData) {
+    try {
+        console.log('Updating person in chart:', personId);
+
+        // Find the person in chart data
+        const personIndex = chartData.findIndex(person => person.id === personId);
+
+        if (personIndex === -1) {
+            console.log('Person not found in chart:', personId);
+            return;
+        }
+
+        // Update the person data
+        const updatedPerson = convertPersonToChartFormat(updatedData);
+        chartData[personIndex] = updatedPerson;
+
+        // Update the chart display
+        await updateChartData([updatedPerson]);
+
+        console.log('Person updated in chart successfully:', personId);
+
+    } catch (error) {
+        console.error('Error updating person in chart:', error);
+        throw error;
+    }
+}
+/**
+ * Get all people in the chart
+ * @returns {Array} Array of all people in the chart
+ */
+export function getAllPeopleInChart() {
+    return [...chartData];
+}
+
+/**
+ * Get chart statistics
+ * @returns {Object} Chart statistics
+ */
+export function getChartStats() {
+    return {
+        totalPeople: chartData.length,
+        males: chartData.filter(p => p.data.gender === 'M').length,
+        females: chartData.filter(p => p.data.gender === 'F').length,
+        unknown: chartData.filter(p => p.data.gender === 'U').length,
+        withImages: chartData.filter(p => p.data.hasUploadedImage).length
+    };
 }
 
 /**

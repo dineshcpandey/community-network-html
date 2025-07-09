@@ -5,6 +5,10 @@ import { showNotification } from './addPerson.js';
 import { isUserAuthenticated, showLoginForm } from './auth.js';
 import { chartData, handleNodeSelect, clearChartData } from './app.js';
 
+import { searchByName, searchByLocation } from './api.js';
+import { addPersonToChart, isPersonInChart } from './chart.js';
+import { AvatarUtils } from './avatarUtils.js';
+
 // Search elements
 let searchForm;
 let nameInput;
@@ -27,6 +31,7 @@ let debounceTimer = null;
 let searchOptions = {
     onPersonSelect: null,
 };
+
 
 /**
  * Set up search functionality with name and location fields
@@ -367,6 +372,47 @@ function selectSuggestion(suggestion) {
     hideSuggestions();
 }
 
+
+
+/**
+ * Initialize search components
+ */
+function initSearchComponents() {
+    searchResultsDropdown = document.getElementById('search-results-dropdown');
+    searchError = document.getElementById('search-error');
+    resultsCount = document.getElementById('results-count');
+    personCards = document.getElementById('person-cards');
+}
+
+/**
+ * Setup search event listeners
+ */
+function setupSearchEventListeners() {
+    // Search form submission
+    const searchForm = document.getElementById('search-form');
+    if (searchForm) {
+        searchForm.addEventListener('submit', handleSearchSubmit);
+    }
+
+    // Search button click
+    const searchBtn = document.getElementById('search-btn');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', handleSearchClick);
+    }
+
+    // Clear button click
+    const clearBtn = document.getElementById('clear-btn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', handleClearClick);
+    }
+
+    // Close results button
+    const closeBtn = document.getElementById('close-results-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', clearSearchResults);
+    }
+}
+
 /**
  * Show the search results dropdown
  */
@@ -569,6 +615,11 @@ function createPersonCard(person, isInChart) {
                 searchOptions.onPersonSelect(person);
             } else {
                 handleNodeSelect(person);
+            }
+            if (searchResultsDropdown &&
+                !searchResultsDropdown.contains(event.target) &&
+                !event.target.closest('.search-container')) {
+                clearSearchResults();
             }
         });
     }
