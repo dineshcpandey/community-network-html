@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Function to load initial data
 function loadInitialData() {
-    fetch('./data/data2.json')
+    fetch('./data/data5.json')
         .then(res => res.json())
         .then(data => {
             // Initialize with the data
