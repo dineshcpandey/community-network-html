@@ -298,6 +298,7 @@ function createChart(data) {
 
 // Create UI control buttons
 function createUIControls() {
+    console.log("createUIControls -->")
     const chartContainer = document.getElementById("FamilyChart");
 
     // Create reset button

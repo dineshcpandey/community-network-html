@@ -18,6 +18,13 @@ let selectedPerson1 = null;
 let selectedPerson2 = null;
 let routeData = null;
 let isEditFormVisible = false;
+let nodes = [];
+let links = [];
+let expandedNodes = new Set();
+let routeNodes = new Set();
+let d3ChartContainer = null;
+let containerWidth = 1360;
+let containerHeight = 700;
 
 // Elements
 const loadingIndicator = document.getElementById('loading-indicator');
@@ -46,6 +53,7 @@ async function initApp() {
 
     // Show loading indicator
     showLoading(true);
+    initializeD3Container();
 
     try {
         // Load initial data (empty for route finder)
@@ -698,145 +706,531 @@ async function displayRouteResults(routeData) {
     updateDataSourceIndicator(`Route found: ${routeData.degreeOfSeparation} degrees of separation`);
 }
 
+
+// Initialize D3 chart container (add this to your initApp function)
+function initializeD3Container() {
+    d3ChartContainer = document.getElementById('d3-chart-container');
+    console.log('=== D3 Container Debug ===');
+    console.log('d3ChartContainer found:', !!d3ChartContainer);
+    console.log('d3ChartContainer element:', d3ChartContainer);
+
+    if (d3ChartContainer) {
+        const rect = d3ChartContainer.getBoundingClientRect();
+        containerWidth = rect.width;
+        containerHeight = rect.height;
+        console.log('Container dimensions:', { width: containerWidth, height: containerHeight });
+        console.log('Container styles:', {
+            display: window.getComputedStyle(d3ChartContainer).display,
+            visibility: window.getComputedStyle(d3ChartContainer).visibility,
+            position: window.getComputedStyle(d3ChartContainer).position
+        });
+    } else {
+        console.error('D3 chart container not found!');
+    }
+}
+
+
+
 // Update chart with route data
 async function updateChartWithRoute(routeData) {
     try {
-        console.log('Updating chart with route data:', routeData);
+        console.log('=== Chart Update Debug ===');
+        console.log('Route data received:', routeData);
+        console.log('Route path length:', routeData.path ? routeData.path.length : 'No path');
+        console.log('Route pathIds:', routeData.pathIds);
 
-        // Convert the route path to the nested format expected by the chart
+        // Hide the original FamilyChart and show D3 chart
+        const familyChart = document.getElementById('FamilyChart');
+        if (familyChart) {
+            familyChart.style.display = 'none';
+            console.log('FamilyChart hidden');
+        }
+
+        if (d3ChartContainer) {
+            d3ChartContainer.style.display = 'block';
+            console.log('D3 chart container shown');
+        }
+
+        // Convert the route path to the nested format expected by the D3 chart
         const convertedRouteData = routeData.path.map(person => {
-            // If the person data is already in the correct nested format, use it as is
-            if (person.data && person.rels) {
-                return person;
-            }
-
-            // Otherwise, convert from flat to nested format
-            return {
+            const converted = {
                 id: person.id.toString(),
                 data: person.data || {
                     "first name": person.personname ? person.personname.split(' ')[0] : '',
                     "last name": person.personname ? person.personname.split(' ').slice(1).join(' ') : '',
-                    "gender": person.gender || '',
-                    "birthday": person.birthday || person.birthdate || null,
-                    "location": person.location || person.currentlocation || '',
-                    "work": person.work || person.worksat || '',
-                    "avatar": person.avatar || person.profile_image_url || "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg",
-                    "contact": {
-                        "email": person.mail_id || '',
-                        "phone": person.phone || ''
-                    },
-                    "nativePlace": person.nativeplace || '',
-                    "desc": person.desc || '',
-                    "label": person.personname || ''
+                    "gender": person.gender || 'U',
+                    "location": person.location || '',
+                    "work": person.work || ''
                 },
                 rels: person.rels || {
-                    "spouses": person.spouseid ? [person.spouseid.toString()] : [],
-                    "children": [],
-                    "father": person.fatherid ? person.fatherid.toString() : null,
-                    "mother": person.motherid ? person.motherid.toString() : null
-                }
+                    spouses: [],
+                    children: [],
+                    father: null,
+                    mother: null
+                },
+                main: false
             };
+            return converted;
         });
 
         console.log('Converted route data:', convertedRouteData);
 
-        // Clean the relationship data - only keep relationships to people who are actually present
-        const presentIds = new Set(convertedRouteData.map(person => person.id));
+        // CLEAN THE DATA to remove invalid references
+        const cleanedRouteData = cleanRouteData(convertedRouteData);
+        console.log('Cleaned route data:', cleanedRouteData);
 
-        const cleanedRouteData = convertedRouteData.map(person => {
-            const cleanedRels = {
-                spouses: [],
-                children: [],
-                father: null,
-                mother: null
-            };
-
-            // Only include relationships to people who are present in the route data
-            if (person.rels.father && presentIds.has(person.rels.father)) {
-                cleanedRels.father = person.rels.father;
-            }
-
-            if (person.rels.mother && presentIds.has(person.rels.mother)) {
-                cleanedRels.mother = person.rels.mother;
-            }
-
-            if (person.rels.spouses && Array.isArray(person.rels.spouses)) {
-                cleanedRels.spouses = person.rels.spouses.filter(spouseId => presentIds.has(spouseId));
-            }
-
-            if (person.rels.children && Array.isArray(person.rels.children)) {
-                cleanedRels.children = person.rels.children.filter(childId => presentIds.has(childId));
-            }
-
-            return {
-                ...person,
-                rels: cleanedRels
-            };
-        });
-
-        console.log('Cleaned route data for chart:', cleanedRouteData);
-
-        // Update chart data store
+        // Update chart data store with cleaned data
         updateChartDataStore(cleanedRouteData);
 
-        // Re-initialize the chart with the new data
-        const chartContainer = document.getElementById('FamilyChart');
-        if (chartContainer) {
-            console.log('Chart container found, initializing chart...');
+        // Set up route nodes for highlighting
+        routeNodes.clear();
+        routeData.pathIds.forEach(id => {
+            routeNodes.add(id.toString());
+        });
+        console.log('Route nodes set:', Array.from(routeNodes));
 
-            // Clear existing chart
-            chartContainer.innerHTML = '';
-
-            // Make sure container is visible and has proper dimensions
-            chartContainer.style.display = 'block';
-            chartContainer.style.width = '100%';
-
-            // Set height based on current mode
-            if (isChartMode) {
-                chartContainer.style.height = 'calc(100vh - 180px)';
-                chartContainer.style.minHeight = '600px';
-            } else {
-                chartContainer.style.height = '700px';
-            }
-
-            chartContainer.style.backgroundColor = 'rgb(33, 33, 33)';
-            chartContainer.style.color = '#fff';
-
-            // Initialize new chart with route data
-            try {
-                await initializeChart(cleanedRouteData, {
-                    onNodeSelect: handleNodeSelect
-                });
-                console.log('Chart initialized successfully');
-            } catch (chartError) {
-                console.error('Chart initialization failed:', chartError);
-
-                // Show fallback message if chart fails to load
-                chartContainer.innerHTML = `
-                    <div class="chart-error-message" style="display: flex; align-items: center; justify-content: center; height: 100%; color: white; text-align: center; font-size: 18px;">
-                        <div>
-                            <h3>Chart Loading Issue</h3>
-                            <p>Route found but chart visualization failed to load.</p>
-                            <p>Route: ${cleanedRouteData.map(p => p.data["first name"] + " " + p.data["last name"]).join(' → ')}</p>
-                            <button onclick="location.reload()" style="margin-top: 10px; padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">Reload Page</button>
-                        </div>
-                    </div>
-                `;
-            }
-        } else {
-            console.error('Chart container not found!');
-        }
-
-        // Highlight the route path after a short delay to ensure chart is rendered
-        setTimeout(() => {
-            highlightRoutePath(routeData.pathIds);
-        }, 1000);
+        // Initialize D3 visualization with cleaned data
+        await initializeD3Visualization(cleanedRouteData);
 
         console.log('Chart updated with route data successfully');
     } catch (error) {
         console.error('Error updating chart with route:', error);
+        console.error('Error stack:', error.stack);
         throw error;
     }
+}
+
+
+async function initializeD3Visualization(data) {
+    console.log('=== D3 Visualization Init Debug ===');
+    console.log('Data received:', data);
+    console.log('Data length:', data.length);
+
+    if (!d3ChartContainer) {
+        d3ChartContainer = document.getElementById('d3-chart-container');
+        if (!d3ChartContainer) {
+            console.error('D3 chart container not found, aborting visualization');
+            return;
+        }
+    }
+
+    // Check container dimensions
+    const rect = d3ChartContainer.getBoundingClientRect();
+    containerWidth = rect.width;
+    containerHeight = rect.height;
+    console.log('Container dimensions during init:', { width: containerWidth, height: containerHeight });
+
+    // If dimensions are 0, use default values
+    if (containerWidth === 0 || containerHeight === 0) {
+        containerWidth = 1200;
+        containerHeight = 600;
+        console.log('Using default dimensions:', { width: containerWidth, height: containerHeight });
+    }
+
+    nodes = data.map(node => {
+        const mappedNode = {
+            ...node,
+            x: Math.random() * (containerWidth - 200) + 100,
+            y: Math.random() * (containerHeight - 200) + 100,
+            type: node.main ? 'main' : (routeNodes.has(node.id) ? 'route' : 'normal')
+        };
+        console.log('Node mapped:', mappedNode);
+        return mappedNode;
+    });
+
+    console.log('All nodes:', nodes);
+
+    // Create a Set of all node IDs for quick lookup
+    const nodeIds = new Set(nodes.map(node => node.id));
+    console.log('Node IDs available:', Array.from(nodeIds));
+
+    // Create links based on relationships - ONLY for existing nodes
+    links = [];
+    nodes.forEach(node => {
+        // Parent relationships
+        if (node.rels.father && nodeIds.has(node.rels.father)) {
+            links.push({
+                source: node.rels.father,
+                target: node.id,
+                type: 'parent'
+            });
+            console.log('Added parent link:', node.rels.father, '->', node.id);
+        } else if (node.rels.father) {
+            console.log('Skipped invalid father link:', node.rels.father, '->', node.id);
+        }
+
+        if (node.rels.mother && nodeIds.has(node.rels.mother)) {
+            links.push({
+                source: node.rels.mother,
+                target: node.id,
+                type: 'parent'
+            });
+            console.log('Added parent link:', node.rels.mother, '->', node.id);
+        } else if (node.rels.mother) {
+            console.log('Skipped invalid mother link:', node.rels.mother, '->', node.id);
+        }
+
+        // Spouse relationships
+        if (node.rels.spouses && Array.isArray(node.rels.spouses)) {
+            node.rels.spouses.forEach(spouseId => {
+                if (nodeIds.has(spouseId)) {
+                    // Only add spouse link if it doesn't already exist (to avoid duplicates)
+                    const existingLink = links.find(link =>
+                        (link.source === node.id && link.target === spouseId) ||
+                        (link.source === spouseId && link.target === node.id)
+                    );
+
+                    if (!existingLink) {
+                        links.push({
+                            source: node.id,
+                            target: spouseId,
+                            type: 'spouse'
+                        });
+                        console.log('Added spouse link:', node.id, '<->', spouseId);
+                    }
+                } else {
+                    console.log('Skipped invalid spouse link:', node.id, '<->', spouseId);
+                }
+            });
+        }
+
+        // Child relationships (optional - you can also derive from father/mother)
+        if (node.rels.children && Array.isArray(node.rels.children)) {
+            node.rels.children.forEach(childId => {
+                if (nodeIds.has(childId)) {
+                    // Check if this link already exists from the child's perspective
+                    const existingLink = links.find(link =>
+                        link.source === node.id && link.target === childId && link.type === 'parent'
+                    );
+
+                    if (!existingLink) {
+                        links.push({
+                            source: node.id,
+                            target: childId,
+                            type: 'parent'
+                        });
+                        console.log('Added child link:', node.id, '->', childId);
+                    }
+                } else {
+                    console.log('Skipped invalid child link:', node.id, '->', childId);
+                }
+            });
+        }
+    });
+
+    console.log('Links created after cleanup:', links);
+
+    // Render the visualization
+    console.log('About to render D3 visualization...');
+    renderD3Visualization();
+
+    // Auto-layout the nodes
+    setTimeout(() => {
+        console.log('Applying auto-layout...');
+        autoLayout();
+    }, 100);
+}
+
+
+
+// Render D3 visualization
+
+function renderD3Visualization() {
+    console.log('=== D3 Render Debug ===');
+    console.log('Container available:', !!d3ChartContainer);
+    console.log('Nodes to render:', nodes.length);
+    console.log('Links to render:', links.length);
+
+    if (!d3ChartContainer) {
+        console.error('Cannot render: D3 chart container not available');
+        return;
+    }
+
+    // Clear container
+    d3ChartContainer.innerHTML = '';
+    console.log('Container cleared');
+
+    // Draw connection lines first
+    console.log('Drawing connection lines...');
+    let validLinks = 0;
+    let invalidLinks = 0;
+
+    links.forEach((link, index) => {
+        const sourceNode = nodes.find(n => n.id === link.source);
+        const targetNode = nodes.find(n => n.id === link.target);
+
+        if (sourceNode && targetNode) {
+            const line = document.createElement('div');
+            line.className = `connection-line ${link.type}`;
+
+            const dx = targetNode.x - sourceNode.x;
+            const dy = targetNode.y - sourceNode.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+            line.style.left = `${sourceNode.x + 80}px`;
+            line.style.top = `${sourceNode.y + 40}px`;
+            line.style.width = `${length}px`;
+            line.style.transform = `rotate(${angle}deg)`;
+
+            // Highlight route connections
+            if (routeNodes.has(link.source) && routeNodes.has(link.target)) {
+                line.classList.add('route');
+                console.log('Route connection highlighted:', link.source, '->', link.target);
+            }
+
+            d3ChartContainer.appendChild(line);
+            validLinks++;
+        } else {
+            console.warn('Invalid link - missing nodes:', link, 'source:', sourceNode, 'target:', targetNode);
+            invalidLinks++;
+        }
+    });
+
+    console.log(`Links summary: ${validLinks} valid, ${invalidLinks} invalid`);
+
+    // Draw nodes
+    console.log('Drawing nodes...');
+    nodes.forEach((node, index) => {
+        const nodeCard = document.createElement('div');
+        nodeCard.className = `node-card ${node.type}`;
+        nodeCard.setAttribute('data-id', node.id);
+
+        // Add gender-specific styling
+        if (node.data.gender === 'F') {
+            nodeCard.classList.add('female');
+        }
+
+        // Add expanded styling
+        if (expandedNodes.has(node.id)) {
+            nodeCard.classList.add('expanded');
+        }
+
+        nodeCard.style.left = `${node.x}px`;
+        nodeCard.style.top = `${node.y}px`;
+
+        nodeCard.innerHTML = `
+            <div class="node-name">${node.data['first name']} ${node.data['last name']}</div>
+            <div class="node-details">📍 ${node.data.location || 'No location'}</div>
+            ${node.data.work ? `<div class="node-details">💼 ${node.data.work}</div>` : ''}
+            <div class="node-id">ID: ${node.id}</div>
+        `;
+
+        // Add click handler
+        nodeCard.addEventListener('click', () => handleD3NodeClick(node));
+
+        // Add drag functionality
+        makeDraggable(nodeCard, node);
+
+        d3ChartContainer.appendChild(nodeCard);
+        console.log(`Node ${index} added:`, { id: node.id, x: node.x, y: node.y, type: node.type });
+    });
+
+    console.log('Rendering complete. Container children count:', d3ChartContainer.children.length);
+}
+
+function debugCurrentState() {
+    console.log('=== Current State Debug ===');
+    console.log('d3ChartContainer:', d3ChartContainer);
+    console.log('nodes:', nodes);
+    console.log('links:', links);
+    console.log('routeNodes:', Array.from(routeNodes));
+    console.log('expandedNodes:', Array.from(expandedNodes));
+
+    if (d3ChartContainer) {
+        console.log('Container innerHTML length:', d3ChartContainer.innerHTML.length);
+        console.log('Container children count:', d3ChartContainer.children.length);
+        console.log('Container display:', window.getComputedStyle(d3ChartContainer).display);
+    }
+}
+
+// Call this function from the browser console to check the current state
+window.debugCurrentState = debugCurrentState;
+
+// 6. Add this to your initApp function to ensure D3 container is initialized:
+// Add this line in your initApp function:
+console.log('Initializing D3 container...');
+initializeD3Container();
+
+// Handle node click
+function handleD3NodeClick(node) {
+    selectedNode = node;
+    console.log('D3 Node clicked:', node.id);
+
+    // Simulate network expansion
+    if (!expandedNodes.has(node.id)) {
+        expandedNodes.add(node.id);
+        renderD3Visualization();
+    }
+}
+
+// Make nodes draggable
+function makeDraggable(element, node) {
+    let isDragging = false;
+    let startX, startY, startLeft, startTop;
+
+    element.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = node.x;
+        startTop = node.y;
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+
+        e.preventDefault();
+    });
+
+    function onMouseMove(e) {
+        if (!isDragging) return;
+
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        node.x = Math.max(0, Math.min(containerWidth - 200, startLeft + dx));
+        node.y = Math.max(0, Math.min(containerHeight - 100, startTop + dy));
+
+        renderD3Visualization();
+    }
+
+    function onMouseUp() {
+        isDragging = false;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    }
+}
+
+// Auto-layout function
+function autoLayout() {
+    if (nodes.length === 0) return;
+
+    // Simple linear layout for route visualization
+    const spacing = Math.min(containerWidth / (nodes.length + 1), 200);
+    const centerY = containerHeight / 2;
+
+    nodes.forEach((node, index) => {
+        node.x = (index + 1) * spacing;
+        node.y = centerY + (Math.random() - 0.5) * 100; // Add some vertical variation
+    });
+
+    renderD3Visualization();
+}
+
+// UPDATE the switchToChartMode function to handle D3 container:
+function switchToChartMode() {
+    console.log('=== Switch to Chart Mode Debug ===');
+    console.log('Switching to chart mode...');
+
+    isChartMode = true;
+    const app = document.querySelector('.app');
+    const routeFinderBar = document.getElementById('route-finder-bar');
+    const chartModeControls = document.getElementById('chart-mode-controls');
+    const chartContainer = document.getElementById('d3-chart-container') || document.getElementById('FamilyChart');
+
+    console.log('Elements found:', {
+        app: !!app,
+        routeFinderBar: !!routeFinderBar,
+        chartModeControls: !!chartModeControls,
+        chartContainer: !!chartContainer
+    });
+
+    // Update app class
+    app.classList.remove('search-mode');
+    app.classList.add('chart-mode');
+
+    // Hide search controls
+    if (routeFinderBar) {
+        routeFinderBar.classList.add('hidden');
+    }
+
+    // Show chart mode controls
+    if (chartModeControls) {
+        chartModeControls.style.display = 'flex';
+    }
+
+    // Expand chart area
+    if (chartContainer) {
+        chartContainer.style.height = 'calc(100vh - 180px)';
+        chartContainer.style.minHeight = '600px';
+
+        console.log('Chart container updated:', chartContainer.id);
+
+        // Update container dimensions if it's the D3 chart
+        if (chartContainer.id === 'd3-chart-container') {
+            const rect = chartContainer.getBoundingClientRect();
+            containerWidth = rect.width;
+            containerHeight = rect.height;
+            console.log('Updated D3 container dimensions:', { width: containerWidth, height: containerHeight });
+
+            // Re-render with new dimensions
+            setTimeout(() => {
+                console.log('Re-rendering D3 visualization with new dimensions...');
+                renderD3Visualization();
+            }, 300);
+        }
+    }
+
+    console.log('Chart mode activated');
+}
+
+function cleanRouteData(data) {
+    console.log('=== Cleaning Route Data ===');
+    console.log('Data before cleaning:', data);
+
+    // Track all existing IDs
+    const allPresentIds = new Set(data.map(person => person.id));
+    console.log('All present IDs:', Array.from(allPresentIds));
+
+    const cleanedData = data.map(person => {
+        const cleanedRels = {
+            spouses: [],
+            children: [],
+            father: null,
+            mother: null
+        };
+
+        // Only include relationships to people who are present
+        if (person.rels.father && allPresentIds.has(person.rels.father)) {
+            cleanedRels.father = person.rels.father;
+        } else if (person.rels.father) {
+            console.log(`Removing invalid father reference: ${person.rels.father} for person ${person.id}`);
+        }
+
+        if (person.rels.mother && allPresentIds.has(person.rels.mother)) {
+            cleanedRels.mother = person.rels.mother;
+        } else if (person.rels.mother) {
+            console.log(`Removing invalid mother reference: ${person.rels.mother} for person ${person.id}`);
+        }
+
+        if (person.rels.spouses && Array.isArray(person.rels.spouses)) {
+            cleanedRels.spouses = person.rels.spouses.filter(spouseId => {
+                const isPresent = allPresentIds.has(spouseId);
+                if (!isPresent) {
+                    console.log(`Removing invalid spouse reference: ${spouseId} for person ${person.id}`);
+                }
+                return isPresent;
+            });
+        }
+
+        if (person.rels.children && Array.isArray(person.rels.children)) {
+            cleanedRels.children = person.rels.children.filter(childId => {
+                const isPresent = allPresentIds.has(childId);
+                if (!isPresent) {
+                    console.log(`Removing invalid child reference: ${childId} for person ${person.id}`);
+                }
+                return isPresent;
+            });
+        }
+
+        return {
+            ...person,
+            rels: cleanedRels
+        };
+    });
+
+    console.log('Data after cleaning:', cleanedData);
+    return cleanedData;
 }
 
 // Highlight the route path in the D3 chart
@@ -922,70 +1316,34 @@ function highlightRoutePath(pathIds) {
 }
 
 // Handle clear selections
+
 function handleClearSelections() {
-    console.log('Clearing selections...');
+    removeSelection(1);
+    removeSelection(2);
 
-    // Clear selected persons
-    selectedPerson1 = null;
-    selectedPerson2 = null;
-
-    // Clear displays
-    const person1Display = document.getElementById('person1-display');
-    const person2Display = document.getElementById('person2-display');
-
-    if (person1Display) person1Display.innerHTML = '<span class="no-selection">No person selected</span>';
-    if (person2Display) person2Display.innerHTML = '<span class="no-selection">No person selected</span>';
-
-    // Clear search inputs
-    if (searchInstance1) {
-        searchInstance1.handleClearSearch();
-    }
-    if (searchInstance2) {
-        searchInstance2.handleClearSearch();
+    // Hide route info
+    const routeInfo = document.getElementById('route-info');
+    if (routeInfo) {
+        routeInfo.style.display = 'none';
     }
 
-    // Update find route button
-    updateFindRouteButton();
+    // Clear D3 chart and show FamilyChart
+    if (d3ChartContainer) {
+        d3ChartContainer.style.display = 'none';
+        d3ChartContainer.innerHTML = '<div class="d3-chart-loading">Select two people to find route</div>';
+    }
+
+    const familyChart = document.getElementById('FamilyChart');
+    if (familyChart) {
+        familyChart.style.display = 'block';
+    }
 
     // Switch back to search mode
     switchToSearchMode();
 
-    // Clear chart and show initial empty state
-    const chartContainer = document.getElementById('FamilyChart');
-    if (chartContainer) {
-        chartContainer.innerHTML = '';
-
-        const emptyStateEl = document.createElement('div');
-        emptyStateEl.className = 'empty-chart-message';
-        emptyStateEl.innerHTML = `
-            <div class="empty-chart-content">
-                <h2>Route Finder</h2>
-                <p>Select two people above to find and display the route between them.</p>
-                <div class="empty-chart-icon">🔍</div>
-            </div>
-        `;
-
-        chartContainer.appendChild(emptyStateEl);
-    }
-
-    // Clear route data
-    routeData = null;
-
-    // Clear any route highlighting
-    document.querySelectorAll('.route-path-highlight, .route-path-main').forEach(el => {
-        el.classList.remove('route-path-highlight', 'route-path-main');
-    });
-
-    // Reset route info
-    const routeInfo = document.getElementById('route-info');
-    const routeDetails = document.getElementById('route-details');
-    if (routeInfo) routeInfo.style.display = 'none';
-    if (routeDetails) routeDetails.style.display = 'none';
-    updateRouteStatus('Select two people to find route');
-
     updateDataSourceIndicator('Select two people to find route');
-    console.log('Selections cleared successfully');
 }
+
 
 // Handle node selection and network expansion (same as app.js)
 async function handleNodeSelect(node) {
@@ -1218,47 +1576,9 @@ document.addEventListener('DOMContentLoaded', initApp);
 // Mode management
 let isChartMode = false;
 
-// Switch to chart mode (hide search, expand chart)
-function switchToChartMode() {
-    console.log('Switching to chart mode...');
-
-    isChartMode = true;
-    const app = document.querySelector('.app');
-    const routeFinderBar = document.getElementById('route-finder-bar');
-    const chartModeControls = document.getElementById('chart-mode-controls');
-    const chartContainer = document.getElementById('FamilyChart');
-
-    // Update app class
-    app.classList.remove('search-mode');
-    app.classList.add('chart-mode');
-
-    // Hide search controls
-    if (routeFinderBar) {
-        routeFinderBar.classList.add('hidden');
-    }
-
-    // Show chart mode controls
-    if (chartModeControls) {
-        chartModeControls.style.display = 'flex';
-    }
-
-    // Expand chart area
-    if (chartContainer) {
-        chartContainer.style.height = 'calc(100vh - 180px)';
-        chartContainer.style.minHeight = '600px';
-
-        // Trigger chart resize if it exists
-        if (window.f3Chart && window.f3Chart.updateTree) {
-            setTimeout(() => {
-                window.f3Chart.updateTree();
-            }, 300);
-        }
-    }
-
-    console.log('Chart mode activated');
-}
 
 // Switch to search mode (show search, smaller chart)
+
 function switchToSearchMode() {
     console.log('Switching to search mode...');
 
@@ -1266,7 +1586,7 @@ function switchToSearchMode() {
     const app = document.querySelector('.app');
     const routeFinderBar = document.getElementById('route-finder-bar');
     const chartModeControls = document.getElementById('chart-mode-controls');
-    const chartContainer = document.getElementById('FamilyChart');
+    const chartContainer = document.getElementById('d3-chart-container') || document.getElementById('FamilyChart');
 
     // Update app class
     app.classList.remove('chart-mode');
@@ -1284,18 +1604,25 @@ function switchToSearchMode() {
 
     // Resize chart area
     if (chartContainer) {
-        chartContainer.style.height = '400px';
+        chartContainer.style.height = '700px';
 
-        // Trigger chart resize if it exists
-        if (window.f3Chart && window.f3Chart.updateTree) {
+        // Update container dimensions if it's the D3 chart
+        if (chartContainer.id === 'd3-chart-container') {
+            const rect = chartContainer.getBoundingClientRect();
+            containerWidth = rect.width;
+            containerHeight = rect.height;
+
+            // Re-render with new dimensions
             setTimeout(() => {
-                window.f3Chart.updateTree();
+                renderD3Visualization();
             }, 300);
         }
     }
 
     console.log('Search mode activated');
 }
+
+
 
 // Update chart mode info
 function updateChartModeInfo(person1, person2, routeData) {

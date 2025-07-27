@@ -67,6 +67,7 @@
   }
 
   function toggleRels(tree_datum, hide_rels) {
+    console.log("toggleRels")
     const
       rels = hide_rels ? 'rels' : '_rels',
       rels_ = hide_rels ? '_rels' : 'rels';
@@ -99,10 +100,12 @@
   }
 
   function toggleAllRels(tree_data, hide_rels) {
+    console.log("toggleAllRels", hide_rels)
     tree_data.forEach(d => { d.data.hide_rels = hide_rels; toggleRels(d, hide_rels); });
   }
 
   function checkIfRelativesConnectedWithoutPerson(datum, data_stash) {
+    console.log("checkIfRelativesConnectedWithoutPerson")
     const r = datum.rels,
       r_ids = [r.father, r.mother, ...(r.spouses || []), ...(r.children || [])].filter(r_id => !!r_id),
       rels_not_to_main = [];
@@ -126,6 +129,7 @@
         if (!line) runAllRels(checkRels);
 
         function runAllRels(f) {
+          console.log("runAllRels")
           const r = d0.rels;
           [r.father, r.mother, ...(r.spouses || []), ...(r.children || [])]
             .filter(d_id => (d_id && ![...without_persons, ...history].find(d => d.id === d_id)))
@@ -137,6 +141,7 @@
         }
 
         function checkRels(d_id) {
+          console.log("=>checkRels")
           const person = data_stash.find(d => d.id === d_id);
           checkIfAnyRelIsMain(person, history);
         }
@@ -254,6 +259,7 @@
     else if (rel_type === "spouse") addSpouse(datum);
 
     function addChild(datum) {
+      console.log("addChild", datum)
       if (datum.data.other_parent) {
         addChildToSpouseAndParentToChild(datum.data.other_parent);
         delete datum.data.other_parent;
@@ -281,6 +287,7 @@
     }
 
     function addParent(datum) {
+      console.log("addParent", datum)
       const is_father = datum.data.gender === "M",
         parent_to_add_id = rel_datum.rels[is_father ? 'father' : 'mother'];
       if (parent_to_add_id) removeToAdd(data_stash.find(d => d.id === parent_to_add_id), data_stash);
@@ -321,6 +328,7 @@
   }
 
   function handleNewRel({ datum, new_rel_datum, data_stash }) {
+    console.log("handleNewRel")
     const rel_type = new_rel_datum._new_rel_data.rel_type;
     delete new_rel_datum._new_rel_data;
     new_rel_datum = JSON.parse(JSON.stringify(new_rel_datum));  // to keep same datum state in current add relative tree
@@ -452,13 +460,19 @@
   }
 
   function CalculateTree({ data, main_id = null, node_separation = 250, level_separation = 150, single_parent_empty_card = true, is_horizontal = false }) {
+    console.log("==>CalculateTree", data)
     if (!data || !data.length) return { data: [], data_stash: [], dim: { width: 0, height: 0 }, main_id: null }
     if (is_horizontal) [node_separation, level_separation] = [level_separation, node_separation];
     const data_stash = single_parent_empty_card ? createRelsToAdd(data) : data;
+
+    console.log("Data_stash ", data_stash)
     sortChildrenWithSpouses(data_stash);
     const main = (main_id !== null && data_stash.find(d => d.id === main_id)) || data_stash[0];
     const tree_children = calculateTreePositions(main, 'children', false);
     const tree_parents = calculateTreePositions(main, 'parents', true);
+    console.log("Tree_Children: ", tree_children)
+    console.log("Tree_parent: ", tree_parents)
+
 
     data_stash.forEach(d => d.main = d === main);
     levelOutEachSide(tree_parents, tree_children);
@@ -765,10 +779,14 @@
     return links;
 
     function handleAncestrySide({ d }) {
+      console.log("handleAncestrySide ", d)
+      //console.log("Checking for Parents")
+      //console.dir(d)
       if (!d.parents) return
       const p1 = d.parents[0];
       const p2 = d.parents[1] || p1;
 
+      console.log("handleAncestrySide Parents: ", p1, p2)
       const p = { x: getMid(p1, p2, 'x'), y: getMid(p1, p2, 'y') };
 
       links.push({
@@ -1347,6 +1365,7 @@
   }
 
   function cardChangeMain(store, { d }) {
+    console.log("cardChangeMain ", d)
     toggleAllRels(store.getTree().data, false);
     store.updateMainId(d.data.id);
     store.updateTree({ tree_position: store.state.tree_fit_on_change });
@@ -2157,7 +2176,7 @@
     setupCardSvgDefs(props.svg, props.card_dim);
 
     return function (d) {
-      console.log("Family-chart.js Line 2158")
+      console.log("Family-chart.js Line 2173")
       const gender_class = d.data.data.gender === 'M' ? 'card-male' : d.data.data.gender === 'F' ? 'card-female' : 'card-genderless';
       const card_dim = props.card_dim;
 
@@ -2207,6 +2226,7 @@
               : cardInnerDefault;
 
     return function (d) {
+      console.dir(d)
       this.innerHTML = (`
     <div class="card ${getClassList(d).join(' ')}" data-id="${d.data.id}" style="transform: translate(-50%, -50%); pointer-events: auto;">
       ${props.mini_tree ? getMiniTree(d) : ''}
@@ -2255,6 +2275,7 @@
     }
 
     function newRelDataDisplay(d) {
+      console.log("=>newRelDataDisplay")
       const attr_list = [];
       attr_list.push(`data-rel-type="${d.data._new_rel_data.rel_type}"`);
       if (['son', 'daughter'].includes(d.data._new_rel_data.rel_type)) attr_list.push(`data-other-parent-id="${d.data._new_rel_data.other_parent_id}"`);
@@ -2262,6 +2283,7 @@
     }
 
     function getMiniTree(d) {
+      console.log("=>getMiniTree", d)
       if (!props.mini_tree) return ''
       if (d.data.to_add) return ''
       if (d.data._new_rel_data) return ''
