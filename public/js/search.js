@@ -54,21 +54,6 @@ export function setupSearch(options = {}) {
     searchResultsDropdown = document.querySelector('.search-results-dropdown');
     closeResultsBtn = document.getElementById('close-results-btn');
 
-    // Debug check
-    console.log('Search elements found:', {
-        searchForm: !!searchForm,
-        nameInput: !!nameInput,
-        locationInput: !!locationInput,
-        locationSuggestions: !!locationSuggestions,
-        searchButton: !!searchButton,
-        clearButton: !!clearButton,
-        searchError: !!searchError,
-        resultsCount: !!resultsCount,
-        personCards: !!personCards,
-        searchResultsDropdown: !!searchResultsDropdown,
-        closeResultsBtn: !!closeResultsBtn
-    });
-
     // CRITICAL: Ensure modal is hidden on startup
     if (searchResultsDropdown) {
         searchResultsDropdown.style.display = 'none';
@@ -79,17 +64,14 @@ export function setupSearch(options = {}) {
     // Set up event listeners
     if (searchForm) {
         searchForm.addEventListener('submit', handleSearch);
-        console.log('Search form submit handler attached');
     }
 
     if (searchButton) {
         searchButton.addEventListener('click', handleSearch);
-        console.log('Search button click handler attached');
     }
 
     if (clearButton) {
         clearButton.addEventListener('click', handleClearSearch);
-        console.log('Clear button click handler attached');
     }
 
     // Set up location type-ahead
@@ -97,7 +79,6 @@ export function setupSearch(options = {}) {
         locationInput.addEventListener('input', handleLocationInput);
         locationInput.addEventListener('keydown', handleLocationKeydown);
         locationInput.addEventListener('blur', hideSuggestions);
-        console.log('Location input handlers attached');
     }
 
     // Set up close results button
@@ -130,7 +111,6 @@ export function setupSearch(options = {}) {
         }
     });
 
-    console.log('Search component initialized');
 }
 
 /**
@@ -149,7 +129,6 @@ function isModalVisible() {
  */
 async function handleSearch(e) {
     e.preventDefault();
-    console.log('Search handler triggered');
 
     // Check authentication
     if (!isUserAuthenticated()) {
@@ -178,10 +157,7 @@ async function handleSearch(e) {
     clearSearchResultsContent();
 
     try {
-        console.log(`Searching for name: "${name}", location: "${location}"`);
-
         const results = await searchPeople(name, location);
-        console.log('Search results:', results);
 
         // Clear any previous errors
         if (searchError) {
@@ -419,8 +395,6 @@ function setupSearchEventListeners() {
 function showSearchResults() {
     if (!searchResultsDropdown) return;
 
-    console.log('Showing search results modal');
-
     // Force proper display
     searchResultsDropdown.style.display = 'flex';
     searchResultsDropdown.style.visibility = 'visible';
@@ -457,8 +431,6 @@ function clearSearchResultsContent() {
  * Clear search results and hide modal
  */
 export function clearSearchResults() {
-    console.log('Clearing search results');
-
     if (searchResultsDropdown) {
         searchResultsDropdown.style.display = 'none';
         searchResultsDropdown.style.visibility = 'hidden';
@@ -626,7 +598,7 @@ function createPersonCard(person, isInChart) {
 
     if (viewDetailsBtn) {
         viewDetailsBtn.addEventListener('click', () => {
-            console.log('View details for person:', person.id);
+            // View details implementation can be added here
         });
     }
 

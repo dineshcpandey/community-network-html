@@ -36,15 +36,12 @@ let searchInstance2 = null;
 
 // Function to update the chart data store (same as app.js)
 export function updateChartDataStore(newData) {
-    console.log("route-finder.js: Updating chart data store with", newData.length, "items");
     chartData.length = 0;
     newData.forEach(item => chartData.push(item));
 }
 
 // Initialize the application (following app.js pattern)
 async function initApp() {
-    console.log('Initializing Route Finder App...');
-
     // Initialize authentication (same as app.js)
     initAuth();
 

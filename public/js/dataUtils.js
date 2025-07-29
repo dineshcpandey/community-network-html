@@ -8,8 +8,6 @@
  */
 export function mergeNetworkData(chartData, networkData) {
     // Clone the chart data to avoid mutating the original
-    console.log("dataUtils.js: Merging network data", networkData.length, "items into chart data", chartData.length, "items");
-
     const updatedData = JSON.parse(JSON.stringify(chartData));
 
     // Process each person in the network data
@@ -76,9 +74,6 @@ export function mergeNetworkData(chartData, networkData) {
  * @returns {Array} - Cleaned data
  */
 export function cleanInvalidReferences(data) {
-
-    console.log("dataUtils.js: Cleaning invalid references from", data.length, "items");
-    console.dir(data)
     // Clone the data to avoid unexpected mutations
     const processedData = JSON.parse(JSON.stringify(data));
 
@@ -91,13 +86,13 @@ export function cleanInvalidReferences(data) {
 
         // Check and clean father reference
         if (person.rels.father && !existingIds.has(person.rels.father)) {
-            console.log(`dataUtils.js: Removing invalid father reference: ${person.rels.father} for person ${person.id}`);
+            console.warn(`Removing invalid father reference: ${person.rels.father} for person ${person.id}`);
             delete person.rels.father;
         }
 
         // Check and clean mother reference
         if (person.rels.mother && !existingIds.has(person.rels.mother)) {
-            console.log(`dataUtils.js: Removing invalid mother reference: ${person.rels.mother} for person ${person.id}`);
+            console.warn(`Removing invalid mother reference: ${person.rels.mother} for person ${person.id}`);
             delete person.rels.mother;
         }
 
@@ -106,7 +101,7 @@ export function cleanInvalidReferences(data) {
             person.rels.spouses = person.rels.spouses.filter(spouseId => {
                 const isValid = existingIds.has(spouseId);
                 if (!isValid) {
-                    console.log(`dataUtils.js: Removing invalid spouse reference: ${spouseId} for person ${person.id}`);
+                    console.warn(`Removing invalid spouse reference: ${spouseId} for person ${person.id}`);
                 }
                 return isValid;
             });
@@ -121,7 +116,7 @@ export function cleanInvalidReferences(data) {
             person.rels.children = person.rels.children.filter(childId => {
                 const isValid = existingIds.has(childId);
                 if (!isValid) {
-                    console.log(`dataUtils.js: Removing invalid child reference: ${childId} for person ${person.id}`);
+                    console.warn(`Removing invalid child reference: ${childId} for person ${person.id}`);
                 }
                 return isValid;
             });

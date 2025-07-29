@@ -430,7 +430,6 @@ export async function initializeChart(data, options = {}) {
             "last name",
             "birthday",
             "avatar",
-            "gender",
             "location",
             "work"
         ])
@@ -630,7 +629,6 @@ export function openEditTree(person) {
             "last name",
             "birthday",
             "avatar",
-            "gender",
             "location",
             "work"
         ])

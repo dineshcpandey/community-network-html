@@ -36,15 +36,12 @@ const containerHeight = 700;
 
 // Function to update the chart data store (same as existing)
 export function updateChartDataStore(newData) {
-    console.log("route-finder.js: Updating chart data store with", newData.length, "items");
     chartData.length = 0;
     newData.forEach(item => chartData.push(item));
 }
 
 // Initialize the application (following existing pattern)
 async function initApp() {
-    console.log('Initializing Route Finder App...');
-
     // Initialize authentication (same as existing)
     initAuth();
 

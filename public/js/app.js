@@ -24,14 +24,9 @@ const dataSourceIndicator = document.getElementById('data-source-indicator');
 
 // Function to update the chart data store
 export function updateChartDataStore(newData) {
-
-    console.log("app.js: Updating chart data store with", newData.length, "items");
-    console.dir(newData)
     // Replace the entire array content
     chartData.length = 0;
     newData.forEach(item => chartData.push(item));
-    console.log("Chart Data")
-    console.dir(chartData)
 }
 
 // Initialize the application
