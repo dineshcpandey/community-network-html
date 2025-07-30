@@ -1,0 +1,232 @@
+/* Edit Form Image Section Styles */
+.edit-form-image-section {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.image-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 12px;
+}
+
+.image-section-header h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.image-options {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.image-options .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 0.75em;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.image-options .btn svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.image-options .btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.image-options .btn-primary:hover {
+    background: #0056b3;
+}
+
+.image-options .btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.image-options .btn-secondary:hover {
+    background: #545b62;
+}
+
+.current-image-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+    margin-bottom: 12px;
+}
+
+.current-avatar {
+    flex-shrink: 0;
+}
+
+.current-avatar img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #dee2e6;
+}
+
+.image-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.image-status {
+    margin: 0 0 2px 0;
+    font-weight: 500;
+    color: #2c3e50;
+    font-size: 0.8em;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.image-meta {
+    margin: 0;
+    font-size: 0.7em;
+    color: #6c757d;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#image-upload-container,
+#image-cropper-container {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    max-height: 300px;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+/* Override cropper component styles for better integration */
+#image-cropper-container .image-cropper-component {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    max-width: 100%;
+}
+
+#image-cropper-container .cropper-header h3 {
+    font-size: 0.9em;
+    margin-bottom: 8px;
+}
+
+#image-cropper-container .cropper-header p {
+    font-size: 0.75em;
+    margin-bottom: 12px;
+}
+
+#image-cropper-container .cropper-image-container {
+    max-height: 200px;
+    margin-bottom: 12px;
+}
+
+#image-cropper-container .cropper-controls .btn {
+    min-width: 80px;
+    padding: 6px 10px;
+    font-size: 0.75em;
+}
+
+/* Upload component integration */
+#image-upload-container .image-upload-component {
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    max-width: 100%;
+}
+
+#image-upload-container .upload-area {
+    min-height: 100px;
+    padding: 15px 10px;
+}
+
+#image-upload-container .upload-main-text {
+    font-size: 0.8em;
+}
+
+#image-upload-container .upload-sub-text {
+    font-size: 0.7em;
+}
+
+/* Responsive design for image section */
+@media (max-width: 768px) {
+    .image-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    
+    .image-options {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+/* Specific adjustments for the edit form's constrained width */
+.edit-form .edit-form-image-section {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.edit-form .image-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.edit-form .image-options {
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.edit-form .current-image-display {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+.edit-form #image-upload-container,
+.edit-form #image-cropper-container {
+    margin-left: 0;
+    margin-right: 0;
+    padding: 10px;
+}

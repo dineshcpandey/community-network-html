@@ -96,7 +96,7 @@ class ImageUpload {
                     
                     <div class="upload-actions" style="display: ${this.state.file && !this.state.isUploading ? 'block' : 'none'}">
                         ${!this.options.deferUpload ? `
-                            <button id="upload-btn" class="btn btn-primary btn-sm">
+                            <button id="upload-btn" type="button" class="btn btn-primary btn-sm">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                     <polyline points="7,10 12,15 17,10"/>
@@ -105,7 +105,7 @@ class ImageUpload {
                                 Upload
                             </button>
                         ` : ''}
-                        <button id="cancel-btn" class="btn btn-secondary btn-sm">
+                        <button id="cancel-btn" type="button" class="btn btn-secondary btn-sm">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"/>
                                 <line x1="6" y1="6" x2="18" y2="18"/>
@@ -492,6 +492,20 @@ class ImageUpload {
      */
     getFile() {
         return this.state.file;
+    }
+
+    /**
+     * Check if component has a selected image
+     */
+    hasImage() {
+        return this.state.file !== null;
+    }
+
+    /**
+     * Check if the current image has been uploaded
+     */
+    isUploaded() {
+        return this.state.uploadedImageData !== null;
     }
 
     /**

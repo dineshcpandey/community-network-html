@@ -1,0 +1,195 @@
+/* F3 Form Image Controls Styles */
+
+.f3-image-section {
+    margin: 15px 0;
+    padding: 10px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.f3-avatar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.f3-current-avatar {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #dee2e6;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.f3-current-avatar:hover {
+    border-color: #007bff;
+    transform: scale(1.05);
+}
+
+.f3-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.f3-avatar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.f3-current-avatar:hover .f3-avatar-overlay {
+    opacity: 1;
+}
+
+.f3-change-image-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 0.7em;
+    padding: 4px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-weight: 500;
+}
+
+.f3-change-image-btn svg {
+    width: 12px;
+    height: 12px;
+}
+
+.f3-avatar-options {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.f3-avatar-options button {
+    padding: 4px 8px;
+    font-size: 0.7em;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    background: white;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.f3-upload-btn {
+    border-color: #007bff !important;
+    color: #007bff !important;
+}
+
+.f3-upload-btn:hover {
+    background: #007bff !important;
+    color: white !important;
+}
+
+.f3-crop-btn {
+    border-color: #6c757d !important;
+    color: #6c757d !important;
+}
+
+.f3-crop-btn:hover {
+    background: #6c757d !important;
+    color: white !important;
+}
+
+.f3-cancel-avatar-btn {
+    border-color: #dc3545 !important;
+    color: #dc3545 !important;
+}
+
+.f3-cancel-avatar-btn:hover {
+    background: #dc3545 !important;
+    color: white !important;
+}
+
+.f3-image-container {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Override for upload/crop components when inside f3 form */
+.f3-image-container .image-upload-component,
+.f3-image-container .image-cropper-component {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    max-width: 100%;
+}
+
+.f3-image-container .upload-area {
+    min-height: 100px;
+    padding: 15px 10px;
+}
+
+.f3-image-container .cropper-header h3 {
+    font-size: 0.9em;
+    margin-bottom: 8px;
+}
+
+.f3-image-container .cropper-header p {
+    font-size: 0.75em;
+    margin-bottom: 12px;
+}
+
+.f3-image-container .cropper-image-container {
+    max-height: 180px;
+    margin-bottom: 12px;
+}
+
+.f3-image-container .cropper-controls .btn {
+    min-width: 70px;
+    padding: 5px 8px;
+    font-size: 0.7em;
+}
+
+.f3-image-container .upload-main-text {
+    font-size: 0.8em;
+}
+
+.f3-image-container .upload-sub-text {
+    font-size: 0.7em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .f3-current-avatar {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .f3-avatar-options {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .f3-avatar-options button {
+        min-width: 80px;
+    }
+}
