@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="./styles/imageUpload.css">
     <link rel="stylesheet" href="./styles/imageCropper.css">
     <link rel="stylesheet" href="./styles/edit-form-image.css">
+    <link rel="stylesheet" href="./styles/neumorphism-tabs.css">
     <link rel="stylesheet" href="./styles/f3-image-controls.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
@@ -115,11 +116,23 @@
 
             <!-- Edit Form (initially hidden) -->
             <div id="edit-form" class="edit-form">
-                <div class="edit-form-header">
-                    <h2 id="edit-form-title">Edit Person</h2>
-                    <button id="close-edit-form" class="close-button">&times;</button>
+                <div class="edit-form-modal">
+                    <div class="edit-form-header">
+                        <h2 id="edit-form-title">Edit Person</h2>
+                        <button id="close-edit-form" class="close-button">&times;</button>
+                    </div>
+                    <!-- Neumorphic Tabs for Edit Person Modal -->
+                    <nav class="neu-tabs" role="tablist" aria-label="Edit Person Sections">
+                      <button class="neu-tab" id="tab-basic" role="tab" aria-selected="true" aria-controls="tabpanel-basic" tabindex="0">Basic Info</button>
+                      <button class="neu-tab" id="tab-relationships" role="tab" aria-selected="false" aria-controls="tabpanel-relationships" tabindex="-1">Relationships</button>
+                      <button class="neu-tab" id="tab-images" role="tab" aria-selected="false" aria-controls="tabpanel-images" tabindex="-1">Images</button>
+                      <button class="neu-tab" id="tab-notes" role="tab" aria-selected="false" aria-controls="tabpanel-notes" tabindex="-1">Notes</button>
+                    </nav>
+                    <div id="tabpanel-basic" class="neu-tabpanel" role="tabpanel" aria-labelledby="tab-basic"></div>
+                    <div id="tabpanel-relationships" class="neu-tabpanel" role="tabpanel" aria-labelledby="tab-relationships" hidden></div>
+                    <div id="tabpanel-images" class="neu-tabpanel" role="tabpanel" aria-labelledby="tab-images" hidden></div>
+                    <div id="tabpanel-notes" class="neu-tabpanel" role="tabpanel" aria-labelledby="tab-notes" hidden></div>
                 </div>
-                <div id="edit-form-content" class="edit-form-content"></div>
             </div>
         </main>
     </div>

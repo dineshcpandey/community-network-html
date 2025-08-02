@@ -4,7 +4,7 @@ import { mergeNetworkData, cleanInvalidReferences } from './dataUtils.js';
 import { chartData as appChartData, chartData, updateChartDataStore, showNotification } from './app.js';
 import { fetchNetworkData, updatePersonData } from './api.js';
 import { handleNewRelativeClick, isCurrentlyAddingRelative, resetAddRelativeState } from './addRelative.js';
-import { saveRelationshipsOnSubmit } from './editForm.js';
+import { saveRelationshipsOnSubmit, ImageUpload, ImageCropper } from './editForm.js';
 import { isUserAuthenticated, showLoginForm } from './auth.js';
 import { chartEnhancer } from './chartNeumorphismEnhancer.js';
 
@@ -17,6 +17,46 @@ let f3Card = null;
 let f3EditTree = null;
 // Track the currently edited person
 let currentEditPerson = null;
+
+/**
+ * Handle pending image uploads before form submission
+ * @param {string} personId - The ID of the person being edited
+ * @returns {Promise<{success: boolean, imageUrl?: string}>}
+ */
+async function handlePendingImageUploads(personId) {
+    try {
+        // Check if there's a pending image upload in any of the image upload components
+        const imageUploadContainers = document.querySelectorAll(`[id*="image-upload-container-${personId}"], [id*="f3-image-upload-container-${personId}"]`);
+        
+        for (const container of imageUploadContainers) {
+            // Check if there's an active ImageUpload instance
+            const uploadComponent = container._imageUploadInstance;
+            if (uploadComponent && uploadComponent.hasImage && uploadComponent.hasImage() && !uploadComponent.isUploaded()) {
+                console.log('Found pending image upload, uploading now...');
+                const uploadResult = await uploadComponent.uploadImage(personId);
+                return { success: true, imageUrl: uploadResult.filePath || uploadResult.imageUrl };
+            }
+        }
+
+        // Check for cropped images that might be pending
+        const cropperContainers = document.querySelectorAll(`[id*="image-cropper-container-${personId}"], [id*="f3-image-cropper-container-${personId}"]`);
+        
+        for (const container of cropperContainers) {
+            const cropperComponent = container._imageCropperInstance;
+            if (cropperComponent && cropperComponent.hasPendingCrop && cropperComponent.hasPendingCrop()) {
+                console.log('Found pending crop upload, uploading now...');
+                const cropResult = await cropperComponent.uploadCroppedImage(personId);
+                return { success: true, imageUrl: cropResult.filePath || cropResult.imageUrl };
+            }
+        }
+
+        console.log('No pending image uploads found');
+        return { success: true };
+    } catch (error) {
+        console.error('Error handling pending image uploads:', error);
+        throw new Error(`Image upload failed: ${error.message}`);
+    }
+}
 
 /**
  * Handle form submission for person edits
@@ -651,7 +691,7 @@ export function openEditTree(person) {
         ])
             .fixed(true)  // Keep the form fixed in position
             .setEditFirst(true)  // Start in edit mode
-            .setOnChange(async () => {
+            .setOnChange(async (event, datum) => {
                 try {
                     // Check if user is authenticated
                     if (!isUserAuthenticated()) {
@@ -667,14 +707,22 @@ export function openEditTree(person) {
 
                     console.log("Form submitted for:", currentEditPerson.id);
 
-                    // Use the shared form submission handler
+                    // First, handle any pending image uploads
+                    const imageUploadResult = await handlePendingImageUploads(currentEditPerson.id);
+                    if (imageUploadResult.success && imageUploadResult.imageUrl) {
+                        // Update the person's avatar with the new image URL
+                        currentEditPerson.data.avatar = imageUploadResult.imageUrl;
+                        console.log('Updated person avatar with new image:', imageUploadResult.imageUrl);
+                    }
+
+                    // Then submit the form data (without image data mixed in)
                     await handleFormSubmission(currentEditPerson);
 
                 } catch (error) {
                     console.error('Error updating person data:', error);
 
                     // Show error message
-                    const editFormContent = document.getElementById('edit-form-content');
+                    const editFormContent = document.getElementById('edit-form-content-basic') || document.getElementById('edit-form-content');
                     if (editFormContent) {
                         const errorMsg = document.createElement('div');
                         errorMsg.className = 'form-status-message error';

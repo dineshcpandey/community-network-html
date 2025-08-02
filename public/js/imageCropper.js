@@ -350,4 +350,18 @@ export class ImageCropper {
             this.state.cropper.destroy();
         }
     }
+
+    /**
+     * Check if there's a pending crop ready for upload
+     */
+    hasPendingCrop() {
+        return this.state.cropper !== null && this.state.file !== null;
+    }
+
+    /**
+     * Get the current state
+     */
+    getState() {
+        return { ...this.state };
+    }
 }

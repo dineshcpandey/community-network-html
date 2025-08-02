@@ -84,15 +84,16 @@ export async function searchByLocation(location) {
 }
 
 /**
- * Update person data
+ * Update person data (excluding image data - images are handled separately)
  * @param {string} personId - The ID of the person to update
  * @param {Object} personData - The updated person data
  * @returns {Promise<Object>} The updated person data
  */
 export async function updatePersonData(personId, personData) {
     try {
-        // Format the data according to the API requirements
+        // Format the data according to the API requirements (excluding image data)
         const apiPayload = formatPersonDataForApi(personData);
+        console.log(`Updating person ID ${personId} with data (no image data):`, apiPayload);
 
         // Make the PUT request
         const response = await fetch(`${API_BASE_URL}/${personId}`, {
@@ -101,6 +102,7 @@ export async function updatePersonData(personId, personData) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(apiPayload)
+            
         });
 
         if (!response.ok) {
@@ -121,7 +123,8 @@ export async function updatePersonData(personId, personData) {
                 "birthday": flatData.birthdate || null,
                 "location": flatData.currentlocation || '',
                 "work": flatData.worksat || '',
-                "avatar": personData.data?.avatar || "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg",
+                // Only include avatar URL if it's a simple URL reference, not image data
+                "avatar": getAvatarUrl(personData.data?.avatar, flatData),
                 "contact": {
                     "email": flatData.mail_id || '',
                     "phone": flatData.phone || ''
@@ -145,9 +148,36 @@ export async function updatePersonData(personId, personData) {
     }
 }
 
+/**
+ * Get proper avatar URL (excluding base64 image data)
+ * @param {string} avatarData - The avatar data from personData
+ * @param {Object} flatData - The flat data from API response
+ * @returns {string} The avatar URL
+ */
+function getAvatarUrl(avatarData, flatData) {
+    // If avatar data is base64 or very long, ignore it (image should be uploaded separately)
+    if (avatarData && (avatarData.startsWith('data:image/') || avatarData.length > 500)) {
+        console.log('Ignoring base64/large image data in person update - should be uploaded separately');
+        // Use the API response avatar URL or default
+        return flatData.profile_image_url || 
+               (flatData.profile_image_filename ? `http://localhost:5050/api/images/serve/${flatData.profile_image_filename}` : null) ||
+               "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg";
+    }
+    
+    // If it's a valid URL, use it
+    if (avatarData && (avatarData.startsWith('http') || avatarData.startsWith('/api/images/'))) {
+        return avatarData;
+    }
+    
+    // Default fallback
+    return flatData.profile_image_url || 
+           (flatData.profile_image_filename ? `http://localhost:5050/api/images/serve/${flatData.profile_image_filename}` : null) ||
+           "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg";
+}
+
 
 /**
- * Format person data for API
+ * Format person data for API (excluding image data)
  * @param {Object} personData - The person data from the chart
  * @returns {Object} Formatted data for the API
  */
@@ -167,7 +197,7 @@ function formatPersonDataForApi(personData) {
     const motherId = rels.mother || null;
     const spouseId = rels.spouses && rels.spouses.length > 0 ? rels.spouses[0] : null;
 
-    // Create the API payload with all possible fields
+    // Create the API payload with all possible fields (excluding image data)
     return {
         personname: `${firstName} ${lastName}`.trim(),
         birthdate: birthday,
@@ -181,10 +211,28 @@ function formatPersonDataForApi(personData) {
         phone: personData.data?.contact?.phone || null,
         mail_id: personData.data?.contact?.email || null,
         living: "Y",
-        // Include the original data structure for reference
-        data: personData.data || {},
+        // Note: Avatar/image data is excluded - images are handled via separate image upload API
+        // Include the original data structure for reference (but remove avatar if it contains image data)
+        data: excludeImageDataFromObject(personData.data || {}),
         rels: rels || {}
     };
+}
+
+/**
+ * Remove image data from an object
+ * @param {Object} obj - The object to clean
+ * @returns {Object} Object without image data
+ */
+function excludeImageDataFromObject(obj) {
+    const cleaned = { ...obj };
+    
+    // Remove avatar if it contains base64 image data
+    if (cleaned.avatar && (cleaned.avatar.startsWith('data:image/') || cleaned.avatar.length > 500)) {
+        console.log('Excluding large avatar data from API payload');
+        delete cleaned.avatar;
+    }
+    
+    return cleaned;
 }
 
 /**

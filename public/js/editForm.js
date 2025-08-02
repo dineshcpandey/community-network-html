@@ -5,10 +5,52 @@ import { initEditRelations, saveRelationships } from './editRelations.js';
 import { ImageUpload } from './imageUpload.js';
 import { ImageCropper } from './imageCropper.js';
 
+// Export ImageUpload and ImageCropper for access by other modules
+export { ImageUpload, ImageCropper };
+
 // Elements
 const editForm = document.getElementById('edit-form');
-const editFormContent = document.getElementById('edit-form-content');
 const closeEditFormBtn = document.getElementById('close-edit-form');
+// Tab elements
+const tabButtons = [
+  document.getElementById('tab-basic'),
+  document.getElementById('tab-relationships'),
+  document.getElementById('tab-images'),
+  document.getElementById('tab-notes')
+];
+const tabPanels = [
+  document.getElementById('tabpanel-basic'),
+  document.getElementById('tabpanel-relationships'),
+  document.getElementById('tabpanel-images'),
+  document.getElementById('tabpanel-notes')
+];
+// Tab switching logic
+function switchTab(idx) {
+  tabButtons.forEach((btn, i) => {
+    if (!btn) return;
+    btn.setAttribute('aria-selected', i === idx ? 'true' : 'false');
+    btn.tabIndex = i === idx ? 0 : -1;
+    btn.classList.toggle('active', i === idx);
+    if (tabPanels[i]) tabPanels[i].hidden = i !== idx;
+  });
+}
+
+tabButtons.forEach((btn, idx) => {
+  if (!btn) return;
+  btn.addEventListener('click', () => switchTab(idx));
+  btn.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      tabButtons[(idx + 1) % tabButtons.length].focus();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      tabButtons[(idx - 1 + tabButtons.length) % tabButtons.length].focus();
+    }
+  });
+});
+
+// Default to first tab
+switchTab(0);
 
 // Default options
 let editOptions = {
@@ -53,63 +95,72 @@ function addRelationsStylesheet() {
  * @param {Object} person - Person data
  */
 export function openEditForm(person) {
-    console.log("editForm.js openEditForm ", person);
-
-    if (!editForm || !editFormContent) {
-        console.error('Edit form elements not found');
+    // Clear all tab panels
+    tabPanels.forEach(panel => { if (panel) panel.innerHTML = ''; });
+    if (!editForm) {
+        console.error('Edit form element not found');
         return;
     }
-
     try {
-        // ⚠️ IMPORTANT: Clear the edit form content completely first
-        editFormContent.innerHTML = '';
-        console.log("Inside editForm.js ", person);
-
-        // Make form visible
         editForm.classList.add('visible');
-
-        // Set title
         const editFormTitle = document.getElementById('edit-form-title');
         if (editFormTitle && person) {
-            console.log("Got the edit-form-title ", editFormTitle);
             editFormTitle.textContent = `Edit: ${person.data["first name"] || ''} ${person.data["last name"] || ''}`;
         }
-
-        // Wait a brief moment before opening the edit tree - this helps with timing issues
-        console.log("Trying to open openEditTree", person);
-        setTimeout(() => {
-            // Open edit tree form for this person using direct function
-            openEditTree(person);
-
-            // Initialize edit relations after a slight delay to ensure the f3 form is rendered
-            setTimeout(() => {
-                initEditRelations(person);
-                // Inject image controls into the generated form
-                injectImageControls(person);
-            }, 100);
-        }, 50);
-
-        // Add a mutation observer to detect when the family form is added to the DOM
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    for (let i = 0; i < mutation.addedNodes.length; i++) {
-                        const node = mutation.addedNodes[i];
-                        if (node.nodeType === 1 && node.querySelector && node.querySelector('#familyForm')) {
-                            // We found the family form, initialize edit relations
-                            initEditRelations(person);
-                            observer.disconnect();
-                            break;
-                        }
-                    }
+        // Render Basic Info form into the first tab
+        if (tabPanels[0]) {
+            tabPanels[0].innerHTML = '<div id="edit-form-content-basic"></div>';
+            // Render the main edit tree form into this panel
+            // Use the chart.js openEditTree function, but override the container
+            if (window.getChartInstance && window.getChartInstance().editTree) {
+                // If editTree instance exists, destroy it first
+                try { window.getChartInstance().editTree.destroy(); } catch (e) {}
+            }
+            // Use the global chart instance if available
+            if (window.getChartInstance && window.getChartInstance().chart && window.getChartInstance().chart.editTree) {
+                const chart = window.getChartInstance().chart;
+                if (chart) {
+                    // Create a new editTree instance and set its container
+                    const editTree = chart.editTree();
+                    editTree.cont = document.getElementById('edit-form-content-basic');
+                    editTree.setFields([
+                        "first name",
+                        "last name",
+                        "birthday",
+                        "avatar",
+                        "location",
+                        "work"
+                    ]).fixed(true).setEditFirst(true);
+                    editTree.open({ data: person });
                 }
-            });
-        });
-
-        // Start observing the edit form content
-        observer.observe(editFormContent, { childList: true, subtree: true });
-
-        console.log('Edit form opened for person:', person.id);
+            }
+        }
+        // Render Relationships section into the second tab
+        if (tabPanels[1]) {
+            tabPanels[1].innerHTML = '<div id="edit-form-content-relationships"></div>';
+            // Call initEditRelations with a custom container
+            setTimeout(() => {
+                if (window.initEditRelations) {
+                    window.initEditRelations(person, 'edit-form-content-relationships');
+                } else if (typeof initEditRelations === 'function') {
+                    initEditRelations(person);
+                }
+            }, 100);
+        }
+        // Render Images section into the third tab
+        if (tabPanels[2]) {
+            tabPanels[2].innerHTML = '<div id="edit-form-content-images"></div>';
+            // Inject image controls into this panel
+            setTimeout(() => {
+                if (typeof injectImageControls === 'function') {
+                    injectImageControls(person, 'edit-form-content-images');
+                }
+            }, 200);
+        }
+        // Render Notes section into the fourth tab (stub)
+        if (tabPanels[3]) {
+            tabPanels[3].innerHTML = '<div id="edit-form-content-notes"><textarea class="neu-input" rows="6" placeholder="Add notes about this person..."></textarea></div>';
+        }
     } catch (error) {
         console.error('Error opening edit form:', error);
     }
@@ -238,38 +289,9 @@ function setupImageControlEvents(person) {
     const uploadContainer = document.getElementById(`f3-image-upload-container-${person.id}`);
     const cropContainer = document.getElementById(`f3-image-cropper-container-${person.id}`);
 
-    // Find the form and add submission handler
-    const form = document.querySelector('#familyForm');
-    if (form && !form.hasAttribute('data-image-handler-added')) {
-        form.setAttribute('data-image-handler-added', 'true');
-        
-        // Override form submission to handle image upload
-        const originalSubmit = form.onsubmit;
-        form.onsubmit = async function(e) {
-            e.preventDefault();
-            
-            // Check if there's a pending image upload
-            if (currentImageUpload && currentImageUpload.hasImage && currentImageUpload.hasImage() && !currentImageUpload.isUploaded()) {
-                try {
-                    console.log('Uploading image before form submission...');
-                    await currentImageUpload.uploadImage(person.id);
-                    console.log('Image uploaded successfully');
-                } catch (error) {
-                    console.error('Image upload failed:', error);
-                    alert('Failed to upload image: ' + error.message);
-                    return false; // Don't submit form if image upload fails
-                }
-            }
-            
-            // Continue with original form submission if it exists
-            if (originalSubmit) {
-                return originalSubmit.call(this, e);
-            } else {
-                // Default form submission
-                this.submit();
-            }
-        };
-    }
+    // Remove the old form submission override since we now handle it in chart.js
+    // The form submission will be handled by the f3EditTree's onChange callback
+    // which will call handlePendingImageUploads before submitting form data
 
     if (changeBtn && avatarOptions) {
         changeBtn.addEventListener('click', () => {
@@ -316,8 +338,12 @@ function setupImageControlEvents(person) {
                     // Reset avatar to original image
                     updateAvatarDisplay(person.id, person.data.avatar || '/images/default-avatar.png');
                     currentImageUpload = null; // Clear the instance
+                    uploadContainer._imageUploadInstance = null; // Clear container reference
                 }
             });
+            
+            // Store the instance on the container for later access
+            uploadContainer._imageUploadInstance = currentImageUpload;
         });
     }
 
@@ -338,6 +364,7 @@ function setupImageControlEvents(person) {
                     console.log('Cropped image uploaded successfully:', data);
                     updateAvatarDisplay(person.id, data.filePath || data.imageUrl);
                     cropContainer.style.display = 'none';
+                    cropContainer._imageCropperInstance = null; // Clear container reference
                 },
                 onUploadError: (error) => {
                     console.error('Cropped image upload failed:', error);
@@ -345,8 +372,12 @@ function setupImageControlEvents(person) {
                 },
                 onCancel: () => {
                     cropContainer.style.display = 'none';
+                    cropContainer._imageCropperInstance = null; // Clear container reference
                 }
             });
+            
+            // Store the instance on the container for later access
+            cropContainer._imageCropperInstance = imageCropper;
         });
     }
 
