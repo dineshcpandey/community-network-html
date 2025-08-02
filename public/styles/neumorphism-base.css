@@ -1,0 +1,112 @@
+/**
+ * Neumorphism Base Theme
+ * Core variables and base styles for neumorphic design
+ */
+
+:root {
+    /* Neumorphism Core Variables */
+    --neu-bg: #e6e7ee;
+    --neu-surface: #e6e7ee;
+    --neu-shadow-dark: #c8c9d0;
+    --neu-shadow-light: #ffffff;
+    
+    /* Theme Colors */
+    --neu-primary: #667eea;
+    --neu-secondary: #764ba2;
+    --neu-success: #43e97b;
+    --neu-warning: #f093fb;
+    --neu-error: #ff6b6b;
+    
+    /* Text Colors */
+    --neu-text: #444;
+    --neu-text-secondary: #666;
+    --neu-text-light: #888;
+    
+    /* Gender Colors */
+    --neu-male: #4facfe;
+    --neu-female: #f093fb;
+    --neu-neutral: #43e97b;
+    
+    /* Spacing & Radius */
+    --neu-radius-sm: 8px;
+    --neu-radius-md: 12px;
+    --neu-radius-lg: 20px;
+    --neu-radius-xl: 24px;
+    
+    /* Shadows */
+    --neu-shadow-sm: 3px 3px 6px var(--neu-shadow-dark), -3px -3px 6px var(--neu-shadow-light);
+    --neu-shadow-md: 6px 6px 12px var(--neu-shadow-dark), -6px -6px 12px var(--neu-shadow-light);
+    --neu-shadow-lg: 9px 9px 16px var(--neu-shadow-dark), -9px -9px 16px var(--neu-shadow-light);
+    --neu-shadow-xl: 12px 12px 24px var(--neu-shadow-dark), -12px -12px 24px var(--neu-shadow-light);
+    --neu-shadow-inset: inset 4px 4px 8px var(--neu-shadow-dark), inset -4px -4px 8px var(--neu-shadow-light);
+    --neu-shadow-inset-lg: inset 6px 6px 12px var(--neu-shadow-dark), inset -6px -6px 12px var(--neu-shadow-light);
+}
+
+/* Base Neumorphic Elements */
+.neu-surface {
+    background: var(--neu-surface);
+    box-shadow: var(--neu-shadow-lg);
+    border: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.neu-inset {
+    box-shadow: var(--neu-shadow-inset-lg);
+}
+
+.neu-raised {
+    box-shadow: var(--neu-shadow-xl);
+}
+
+.neu-pressed {
+    box-shadow: var(--neu-shadow-inset);
+    transform: translateY(1px);
+}
+
+.neu-hover:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--neu-shadow-xl);
+}
+
+/* Theme Application */
+.neu-theme {
+    background: var(--neu-bg);
+    color: var(--neu-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    transition: all 0.3s ease;
+}
+
+/* Utility Classes */
+.neu-text-shadow {
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.neu-text-shadow-dark {
+    text-shadow: 1px 1px 2px rgba(200, 201, 208, 0.6);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    :root {
+        --neu-shadow-sm: 2px 2px 4px var(--neu-shadow-dark), -2px -2px 4px var(--neu-shadow-light);
+        --neu-shadow-md: 4px 4px 8px var(--neu-shadow-dark), -4px -4px 8px var(--neu-shadow-light);
+        --neu-shadow-lg: 6px 6px 12px var(--neu-shadow-dark), -6px -6px 12px var(--neu-shadow-light);
+        --neu-shadow-xl: 8px 8px 16px var(--neu-shadow-dark), -8px -8px 16px var(--neu-shadow-light);
+    }
+}
+
+/* Dark mode support (for future) */
+@media (prefers-color-scheme: dark) {
+    .neu-theme.auto-theme {
+        --neu-bg: #2c3e50;
+        --neu-surface: #2c3e50;
+        --neu-shadow-dark: #1a252f;
+        --neu-shadow-light: #3e5771;
+        --neu-text: #ecf0f1;
+        --neu-text-secondary: #bdc3c7;
+        --neu-text-light: #95a5a6;
+    }
+}

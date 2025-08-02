@@ -226,6 +226,13 @@ export class ImageCropper {
                         if (result.success || response.ok) {
                             this.hideProgress();
                             this.state.isUploading = false;
+                            
+                            // Enhanced success callback with avatar update
+                            if (result.avatarUrl || result.imageUrl || result.url) {
+                                const avatarUrl = result.avatarUrl || result.imageUrl || result.url;
+                                this.updatePersonAvatar(personId, avatarUrl);
+                            }
+                            
                             this.options.onUploadSuccess(result);
                             resolve(result);
                         } else {
@@ -246,6 +253,47 @@ export class ImageCropper {
             this.options.onUploadError(error);
             throw error;
         }
+    }
+
+    /**
+     * Update person's avatar in chart data and UI
+     */
+    updatePersonAvatar(personId, avatarUrl) {
+        if (!personId || !avatarUrl) return;
+
+        // Import chart functions dynamically to avoid circular imports
+        import('./chart.js').then(({ updateChartData, getChartInstance }) => {
+            import('./dataUtils.js').then(({ chartData, updateChartDataStore }) => {
+                // Update the person's avatar in chartData
+                const personIndex = chartData.findIndex(person => person.id === personId);
+                if (personIndex !== -1) {
+                    chartData[personIndex].data.avatar = avatarUrl;
+                    
+                    // Update the chart data store
+                    updateChartDataStore([...chartData]);
+                    
+                    // Force chart refresh
+                    const chartInstance = getChartInstance();
+                    if (chartInstance) {
+                        // Force re-render with updated data
+                        updateChartData(chartData);
+                        
+                        // If that doesn't work, try forcing a complete refresh
+                        setTimeout(() => {
+                            chartInstance.update(chartData);
+                        }, 100);
+                    }
+                    
+                    console.log(`Avatar updated for person ${personId}:`, avatarUrl);
+                } else {
+                    console.warn(`Person ${personId} not found in chart data`);
+                }
+            }).catch(error => {
+                console.error('Error importing dataUtils:', error);
+            });
+        }).catch(error => {
+            console.error('Error importing chart:', error);
+        });
     }
 
     /**

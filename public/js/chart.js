@@ -6,6 +6,7 @@ import { fetchNetworkData, updatePersonData } from './api.js';
 import { handleNewRelativeClick, isCurrentlyAddingRelative, resetAddRelativeState } from './addRelative.js';
 import { saveRelationshipsOnSubmit } from './editForm.js';
 import { isUserAuthenticated, showLoginForm } from './auth.js';
+import { chartEnhancer } from './chartNeumorphismEnhancer.js';
 
 
 
@@ -515,6 +516,11 @@ export async function initializeChart(data, options = {}) {
         // Update tree initially
         f3Chart.updateTree({ initial: true });
 
+        // Apply neumorphism enhancements after chart is rendered
+        setTimeout(() => {
+            chartEnhancer.enhanceChart();
+        }, 500);
+
         console.log('Chart initialization complete');
         return f3Chart;
     } catch (error) {
@@ -549,6 +555,12 @@ export async function updateChartData(networkData) {
         return;
     }
 
+    // Safety check for networkData parameter
+    if (!networkData || !Array.isArray(networkData)) {
+        console.error('updateChartData: networkData parameter is required and must be an array');
+        throw new Error('networkData parameter is required and must be an array');
+    }
+
     try {
         console.log("Chart.js: Updating chart data with new network data:", networkData.length, "items");
 
@@ -565,6 +577,11 @@ export async function updateChartData(networkData) {
         // Update chart
         f3Chart.updateData(mergedData);
         f3Chart.updateTree();
+
+        // Apply neumorphism enhancements after chart update
+        setTimeout(() => {
+            chartEnhancer.refresh();
+        }, 300);
 
         console.log('Chart data updated successfully');
     } catch (error) {

@@ -7,6 +7,16 @@
     <title>Family Tree Explorer: Created by Mayuresh</title>
     <script src="https://unpkg.com/d3@6"></script>
     <script type="module" src="./family-chart.js"></script>
+    
+    <!-- Neumorphism Styles -->
+    <link rel="stylesheet" href="./styles/neumorphism-base.css">
+    <link rel="stylesheet" href="./styles/neumorphism-chart.css">
+    <link rel="stylesheet" href="./styles/neumorphism-header.css">
+    <link rel="stylesheet" href="./styles/neumorphism-forms.css">
+    <link rel="stylesheet" href="./styles/neumorphism-avatar.css">
+    <link rel="stylesheet" href="./styles/neumorphism-inputs.css">
+    
+    <!-- Existing Styles -->
     <link rel="stylesheet" href="./styles/family-chart.css">
     <link rel="stylesheet" href="./styles/main.css">
     <link rel="stylesheet" href="./styles/auth.css">
@@ -22,7 +32,7 @@
     <script type="module" src="./js/chartAvatarEnhancer.js"></script>
 </head>
 
-<body>
+<body class="neu-theme">
     <div class="app">
         <!-- Header with app title -->
         <header class="app-header">
@@ -84,10 +94,24 @@
 
         <!-- Full width chart area -->
         <main class="app-main full-width">
-            <!-- Family Chart -->
-            <div id="FamilyChart" class="f3"></div>
-            <div id="loading-indicator" class="loading-indicator">Loading data...</div>
-            <div id="data-source-indicator" class="data-source-indicator">Initial data loaded</div>
+            <!-- Chart Wrapper with Neumorphism -->
+            <div class="chart-wrapper">
+                <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+                    <div class="loading-content">
+                        <div class="loading-spinner"></div>
+                        <p>Loading network data...</p>
+                    </div>
+                </div>
+                
+                <!-- Family Chart Container - Main Focus -->
+                <div class="chart-container">
+                    <div id="FamilyChart" class="f3"></div>
+                </div>
+            </div>
+
+            <!-- Loading and data indicators (legacy) -->
+            <div id="loading-indicator" class="loading-indicator" style="display: none;">Loading data...</div>
+            <div id="data-source-indicator" class="data-source-indicator" style="display: none;">Initial data loaded</div>
 
             <!-- Edit Form (initially hidden) -->
             <div id="edit-form" class="edit-form">

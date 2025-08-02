@@ -1,3 +1,7 @@
+/* Import Neumorphism Base Styles */
+@import './neumorphism-base.css';
+@import './neumorphism-chart.css';
+
 /* Main Styles */
 * {
     box-sizing: border-box;
@@ -11,8 +15,8 @@ body {
         sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #f5f5f5;
-    color: #333;
+    background: var(--neu-bg, #f5f5f5);
+    color: var(--neu-text, #333);
     height: 100vh;
     overflow: hidden;
 }

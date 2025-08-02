@@ -211,8 +211,32 @@ export async function createNewPerson(personData) {
         }
 
         const data = await response.json();
-        console.log(`Created new person:`, data);
-        return data;
+        console.log(`Created new person - raw API response:`, data);
+        
+        // Normalize the response to ensure we have an ID field
+        // The API might return the ID in different formats
+        let normalizedResponse = { ...data };
+        
+        // Ensure we have an ID field (check common patterns)
+        if (!normalizedResponse.id) {
+            if (data.personId) {
+                normalizedResponse.id = data.personId;
+            } else if (data.insertId) {
+                normalizedResponse.id = data.insertId;
+            } else if (data.data && data.data.id) {
+                normalizedResponse.id = data.data.id;
+            } else {
+                console.warn('No ID found in create person response, API response:', data);
+            }
+        }
+        
+        // Ensure ID is a string for consistency
+        if (normalizedResponse.id) {
+            normalizedResponse.id = normalizedResponse.id.toString();
+        }
+        
+        console.log(`Normalized person creation response:`, normalizedResponse);
+        return normalizedResponse;
     } catch (error) {
         console.error('Error creating new person:', error);
         throw error;

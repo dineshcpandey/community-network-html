@@ -5,8 +5,10 @@ import { setupEditForm, openEditForm } from './editForm.js';
 import { fetchInitialData, fetchNetworkData } from './api.js';
 import { setupControlPanel } from './controlPanel.js';
 import { setupEventListeners } from './eventHandlers.js';
-import { showAddPersonForm } from './addPerson.js';
+import { showAddPersonForm as showOriginalAddPersonForm } from './addPerson.js';
+import { showAddPersonForm, showEditPersonForm } from './enhancedPersonForm.js';
 import { initAuth, isUserAuthenticated, showLoginForm, logout } from './auth.js';
+import { chartEnhancer } from './chartNeumorphismEnhancer.js';
 
 import { AvatarUtils } from './avatarUtils.js';
 import { ChartAvatarEnhancer } from './chartAvatarEnhancer.js';
@@ -31,6 +33,9 @@ export function updateChartDataStore(newData) {
 
 // Initialize the application
 async function initApp() {
+    // Initialize neumorphism theme
+    initializeNeumorphism();
+    
     // Initialize authentication
     initAuth();
 
@@ -316,7 +321,7 @@ async function handleAddPersonFromSearch(person) {
 }
 
 // Toggle edit form visibility
-function toggleEditForm() {
+async function toggleEditForm() {
     // Check if a node is selected
     if (!selectedNode) {
         // Show a notification to the user
@@ -325,47 +330,21 @@ function toggleEditForm() {
         return;
     }
 
-    isEditFormVisible = !isEditFormVisible;
-
-    const editForm = document.getElementById('edit-form');
-    const editBtn = document.getElementById('edit-button');
-
-    if (editForm && editBtn) {
-        if (isEditFormVisible) {
-            // Initialize form with selected node
-            try {
-                // Use the specialized openEditForm function from editForm.js
-                openEditForm(selectedNode);
-
-                editBtn.classList.add('active');
-                editBtn.textContent = 'Close Edit Form';
-            } catch (error) {
-                console.error("Error opening edit form:", error);
-
-                // Show error notification
-                showNotification('Error opening edit form', 'error');
-
-                // Reset toggle state
-                isEditFormVisible = false;
-            }
-        } else {
-            editForm.classList.remove('visible');
-            editBtn.classList.remove('active');
-            editBtn.textContent = 'Edit Person';
-
-            // Clear the form content when closing
-            const editFormContent = document.getElementById('edit-form-content');
-            if (editFormContent) {
-                editFormContent.innerHTML = '';
-            }
-
-            // Import and call the function to clear the current edit person reference
-            import('./chart.js').then(module => {
-                if (module.clearCurrentEditPerson) {
-                    module.clearCurrentEditPerson();
-                }
-            });
+    // Use the enhanced form system
+    try {
+        await showEditPersonForm(selectedNode);
+        
+        // Update button state temporarily to show it was clicked
+        const editBtn = document.getElementById('edit-button');
+        if (editBtn) {
+            editBtn.classList.add('active');
+            setTimeout(() => {
+                editBtn.classList.remove('active');
+            }, 200);
         }
+    } catch (error) {
+        console.error("Error opening edit form:", error);
+        showNotification('Error opening edit form', 'error');
     }
 }
 
@@ -548,7 +527,7 @@ function clearChartData(showConfirm = true) {
  * Create a new person and add them to the chart
  */
 function addNewPerson() {
-    // Show the new add person modal instead of using prompts
+    // Show the enhanced neumorphism add person modal
     showAddPersonForm();
 }
 
@@ -564,10 +543,22 @@ function downloadChartData() {
 }
 
 // Show or hide loading indicator
-function showLoading(show) {
-    const loadingIndicator = document.getElementById('loading-indicator');
+function showLoading(show, message = 'Loading data...') {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const legacyLoading = document.getElementById('loading-indicator');
+    
     if (loadingIndicator) {
-        loadingIndicator.style.display = show ? 'block' : 'none';
+        loadingIndicator.style.display = show ? 'flex' : 'none';
+        const loadingText = loadingIndicator.querySelector('p');
+        if (loadingText) {
+            loadingText.textContent = message;
+        }
+    }
+    
+    // Also handle legacy loading indicator
+    if (legacyLoading) {
+        legacyLoading.style.display = show ? 'block' : 'none';
+        legacyLoading.textContent = message;
     }
 }
 
@@ -577,10 +568,25 @@ function showLoading(show) {
  * @param {boolean} isError - Whether this is an error message
  */
 function updateDataSourceIndicator(message, isError = false) {
-    const dataSourceIndicator = document.getElementById('data-source-indicator');
-    if (dataSourceIndicator) {
-        dataSourceIndicator.textContent = message;
-        dataSourceIndicator.style.backgroundColor = isError ? 'rgba(231, 76, 60, 0.7)' : 'rgba(0, 0, 0, 0.7)';
+    // Only use legacy indicator for console logging and debugging
+    const legacyIndicator = document.getElementById('data-source-indicator');
+    
+    // Log for debugging purposes
+    console.log(`Data Source Update: ${message}${isError ? ' (Error)' : ''}`);
+    
+    // Update legacy indicator if it exists (for backwards compatibility)
+    if (legacyIndicator) {
+        legacyIndicator.textContent = message;
+        legacyIndicator.style.backgroundColor = isError ? 'rgba(231, 76, 60, 0.7)' : 'rgba(0, 0, 0, 0.7)';
+        legacyIndicator.style.display = 'none'; // Hide it but keep for debugging
+    }
+    
+    // Update selected node info if relevant
+    if (message.includes('ID:')) {
+        const idMatch = message.match(/ID:\s*(\w+)/);
+        if (idMatch) {
+            updateSelectedNodeDisplay(idMatch[1], !isError);
+        }
     }
 }
 
@@ -602,6 +608,74 @@ function showNotification(message, type = 'info') {
             notification.parentNode.removeChild(notification);
         }
     }, 3000);
+}
+
+/**
+ * Initialize neumorphism theme
+ */
+function initializeNeumorphism() {
+    // Apply base theme classes
+    document.body.classList.add('neu-theme');
+    
+    // Enhance existing elements
+    enhanceExistingElements();
+    
+    console.log('Neumorphism theme initialized');
+}
+
+/**
+ * Enhance existing UI elements with neumorphism
+ */
+function enhanceExistingElements() {
+    // Update search inputs
+    document.querySelectorAll('input[type="text"], input[type="search"]').forEach(input => {
+        if (!input.classList.contains('neu-input')) {
+            input.classList.add('neu-input');
+        }
+    });
+    
+    // Update buttons
+    document.querySelectorAll('button').forEach(button => {
+        if (!button.classList.contains('neu-button') && !button.classList.contains('control-btn')) {
+            button.classList.add('neu-button');
+        }
+    });
+    
+    // Update form containers
+    document.querySelectorAll('.search-container, .auth-container').forEach(container => {
+        if (!container.classList.contains('neu-surface')) {
+            container.classList.add('neu-surface');
+        }
+    });
+    
+    // Show network info initially
+    const networkInfo = document.getElementById('networkInfo');
+    if (networkInfo) {
+        // Network info bar removed for better space utilization
+        networkInfo.style.display = 'none';
+    }
+}
+
+/**
+ * Update selected node display with better UX
+ * @param {string} nodeId - The selected node ID  
+ * @param {boolean} isActive - Whether the node is actively loaded
+ */
+function updateSelectedNodeDisplay(nodeId, isActive = true) {
+    const selectedInfo = document.getElementById('selected-info');
+    const selectedNodeId = document.getElementById('selected-node-id');
+    
+    if (selectedInfo && selectedNodeId) {
+        selectedNodeId.textContent = `${nodeId}${isActive ? ' (Active)' : ' (Loading...)'}`;
+        selectedInfo.style.display = 'block';
+        
+        // Auto-hide after 3 seconds for better UX
+        setTimeout(() => {
+            if (selectedInfo) {
+                selectedInfo.style.display = 'none';
+            }
+        }, 3000);
+    }
 }
 
 // Initialize the app when DOM is ready
